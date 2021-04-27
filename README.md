@@ -11,6 +11,7 @@ El análisis se divide en dos partes, con sendos prefijos:
 A continuación se presenta cada uno, de manera breve.
 
 ### CRU_main_crucero
+Archivo principal.
 
 Código principal para el cálculo de crucero y su optimización. Importa y utiliza otros módulos.
 #### Clases
@@ -52,3 +53,54 @@ Función auxiliar que solamente devuelve el consumo de *simulador_crucero*. Se l
 res_import_export()
 ```
 Función general para ploteo y guardado de figuras, más prolijo y completo que el built-in del simulador. También exporta e importa usando Pickle las distintas clases de la simulación.
+
+#### Extras del archivo
+
+Contiene una función para comparar consumo vs N y algunas líneas comentadas al cierre. En proceso de limpieza / mejora.
+
+### CRU_penal
+Archivo principal.
+
+Código para penalizar el perfil de vuelo post cálculo del consumo. Evalúa los perfiles de ciertas variables y suma combustible según corresponda.
+
+#### Funciones
+```
+penalización():
+```
+Función única del código, que realiza lo anterior.
+
+### CRU_extra_funcs
+Archivo principal.
+
+Contiene la info del modelo atmosférico, el modelo del motor (copiado de la tesis ejemplo), el modelo de CD0 de la polar del avión y los datos del avión (S, peso inicial, AR, Oswald). Contiene algunas líneas comentadas que se usaron originalmente para plotear curvas del motor. Se las va a quitar.
+
+#### Funciones
+```
+CD0_model():
+```
+```
+planedata():
+```
+```
+turbofan():
+```
+```
+isa_ATM():
+```
+
+### CRU_wind_eval
+Archivo principal.
+
+Función única. Determina rumbo (por ahora ejemplo fijo, se actualizará considerando rutas variables), obtiene magnitud y dirección del viento. Devuelve la componente proyectada local.
+
+**Devuelve en FT/S** (ver si cambiar)
+
+### CRU_nav_module
+Archivo auxiliar. Permite plotear estaciones y ruta genérica sobre un mapa del lugar. 
+
+Código en desarrollo, para calcular distancias entre dos puntos [LAT,LON] usando Cartopy (define un Geoide WGS84), lo que debería mejorar la aproximación respecto a obtenerla y cargarla manualmente desde Google, por ejemplo. 
+
+### CRU_extra_text
+Archivo auxiliar.
+
+Manejo de archivos de texto para guardar/cargar perfiles de vuelo en un array dentro de un .txt. Actualmente se está agregando para trabajar directamente con Pickle (y guardar clases enteras con más info).
