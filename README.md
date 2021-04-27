@@ -56,12 +56,12 @@ simulador_crucero():
 Función principal que calcula el consumo de combustible para un perfil dado. Contiene algunas opciones extras para ploteo rápido de figuras (no definitivo seguramente). Calcula utilizando las ecuaciones de vuelo, preserva las distintas variables y penaliza de manera previa al *return*. Devuelve consumo y perfiles de variables principales.
 
 ```
-optimizame()
+optimizame():
 ```
 Función auxiliar que solamente devuelve el consumo de *simulador_crucero*. Se la definió siguiendo el código de la tesis ejemplo, pero seguramente se la quite, tomando output[0] (que es el consumo) directamente dentro del optimizador.
 
 ```
-res_import_export()
+res_import_export():
 ```
 Función general para ploteo y guardado de figuras, más prolijo y completo que el built-in del simulador. También exporta e importa usando Pickle las distintas clases de la simulación.
 
@@ -116,8 +116,7 @@ Archivo auxiliar.
 
 Manejo de archivos de texto para guardar/cargar perfiles de vuelo en un array dentro de un .txt. Actualmente se está agregando para trabajar directamente con Pickle (y guardar clases enteras con más info).
 
-## - - - - - - 
-
+## 
 ### META_main_kringing
 Archivo principal.
 
