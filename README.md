@@ -1,5 +1,7 @@
 # Tesis - UPDATE 27/04
-Tesis Rodrigo Velazquez - Optimizador de crucero + Modelo de viento 3D WS//WD. El código en general requiere las siguientes librerías:
+Tesis Rodrigo Velazquez - Optimizador de crucero + Modelo de viento 3D WS//WD. 
+
+El código en general requiere las siguientes librerías:
 ```
 - Numpy
 - Scipy
