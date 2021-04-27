@@ -1,3 +1,8 @@
-Archivos salida de corridas de MAIN_KRINGING.
+Archivos salida de corridas de MAIN_KRINGING, formato XML propio de la librería OpenTurns, fácil de exportar e importar. Se generar por única vez desde #test_evaluador
+```
 WD = META de Dirección de Viento
 WS = META de Magnitud de Velocidad
+```
+Parámetros:
+COV_Scale = Parámetro de escala/sensibilidad del modelo. A menor escala, modelos más suaves. Altos valores cercanos a la unidad producen picos muy sensibles a los datos que dan valores fuera de límites físicos.
+N_lines = Cantidad de líneas a alimentar. Máximo en unos 15e3 (16gb RAM)
