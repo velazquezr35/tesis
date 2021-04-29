@@ -18,7 +18,8 @@ main_ruta = "station_data"
 
 
 def generar_3DMETA(mode):
-    '''mode 1 para WD, 0 para WS'''
+    ''' mode dir para dirección local \n
+        mode speed para magnitud local '''
     
     if mode == 'speed':
         print("Generación META para módulo de velocidad")
