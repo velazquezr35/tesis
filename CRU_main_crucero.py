@@ -19,8 +19,8 @@ import pickle
 plt.rcParams.update({'font.size': 13})
 
 #Definición viento
-wind_model = tesis_wind.cargar('16_04_wind_models','full_BR_AR')
-wind_modelWD = tesis_wind.cargar('16_04_wind_models','cov1_WD_ARBRA')
+wind_model = tesis_wind.cargar('wind_models','full_BR_AR')
+wind_modelWD = tesis_wind.cargar('wind_models','cov1_WD_ARBRA')
 
 
 #Cálculo de consumo
@@ -114,14 +114,14 @@ def simulador_crucero(profile,N, otp):
             r_1[j] = k/(np.power(q_1[j]*S,2)*CD0[j])
             
             #Evaluar vel viento local
-            Vw_prof[j] = wind_model([h_prof[j]/3.28,LATs[j],LONGs[j]])[0] #h from ft to m
+            #Vw_prof[j] = wind_model([h_prof[j]/3.28,LATs[j],LONGs[j]])[0] #h from ft to m
             WD_prof[j] = wind_modelWD([h_prof[j]/3.28,LATs[j],LONGs[j]])[0]
 
-            Vw_prof[j] = Vw_prof[j]*3.28 #ft/s to m/s
+            #Vw_prof[j] = Vw_prof[j]*3.28 #ft/s to m/s
             
             #Test proyectada
             
-            Vw_proyected[j]= MODELOVIENTO.wind_eval(wind_model, wind_modelWD, h_prof[j]/3.28, LATs[j], LONGs[j])[0] #Ya salida en ft/s
+            Vw_prof[j]= MODELOVIENTO.wind_eval(wind_model, wind_modelWD, h_prof[j]/3.28, LATs[j], LONGs[j])[0] #Ya salida en ft/s
             # print(local_wd-Vw_prof[j])
             
             
