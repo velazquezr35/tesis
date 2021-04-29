@@ -14,7 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-main_ruta = "16_04_data"
+main_ruta = "station_data"
 
 
 def generar_3DMETA(mode):
