@@ -13,14 +13,15 @@ import CRU_extra_funcs as funcs
 import CRU_penal as penal
 import CRU_extra_text as text
 import META_mods_utiles as tesis_wind #Acomodar y poner otro
-import CRU_wind_eval as MODELOVIENTO
+import CRU_wind_eval
 import pickle
+import time
 
 plt.rcParams.update({'font.size': 13})
 
 #Definición viento
-wind_model = tesis_wind.cargar('wind_models','full_BR_AR')
-wind_modelWD = tesis_wind.cargar('wind_models','cov1_WD_ARBRA')
+wind_model = tesis_wind.cargar('wind_models','full_BR_AR_WS')
+wind_modelWD = tesis_wind.cargar('wind_models','full_BR_AR_WD')
 
 
 #Cálculo de consumo
@@ -46,11 +47,12 @@ def simulador_crucero(profile,N, otp):
     # dist = 1.32e7 #2.0592e7 #pies (Distancia original del caso de tesis)
     dist = 2.0592e7 #3900 millas
     
-    #Variables que nos interesan
-    Vg_prof = np.copy(Va_prof)
+    #Variables que nos interesan    
+    #Perfiles del viento
     Vw_prof = np.zeros(N-1)
-    WD_prof = np.zeros(N-1)
-    Vw_proyected = np.zeros(N-1)
+    VwS_prof = np.zeros(N-1)
+    VwD_prof = np.zeros(N-1)
+
     
     CL, CD, CD0 = np.zeros((3,N))
     rho, Temp = np.zeros((2,N))
@@ -76,6 +78,7 @@ def simulador_crucero(profile,N, otp):
     
     # print(x_prof, d_x)
     # print(d_h)
+    
     for j in range(0,N-1): #Recorremos los M segmentos
 
         LONGs[j] = -54.81 + 54.81/3900 *x_prof[j]*0.000189394 #TEST EVALUAR INICIO; LUEGO LLEVAR A PUNTO MEDIO!
@@ -84,7 +87,6 @@ def simulador_crucero(profile,N, otp):
         
         if (d_h[j] == 0):
                       
-            # print("Step cte")
             #Vuelo Va - h cte
             #Calculamos info atm
             rho[j], Temp[j] = funcs.isa_ATM(h_prof[j])[:2]
@@ -114,22 +116,13 @@ def simulador_crucero(profile,N, otp):
             r_1[j] = k/(np.power(q_1[j]*S,2)*CD0[j])
             
             #Evaluar vel viento local
-            #Vw_prof[j] = wind_model([h_prof[j]/3.28,LATs[j],LONGs[j]])[0] #h from ft to m
-            WD_prof[j] = wind_modelWD([h_prof[j]/3.28,LATs[j],LONGs[j]])[0]
 
-            #Vw_prof[j] = Vw_prof[j]*3.28 #ft/s to m/s
-            
-            #Test proyectada
-            
-            Vw_prof[j]= MODELOVIENTO.wind_eval(wind_model, wind_modelWD, h_prof[j]/3.28, LATs[j], LONGs[j])[0] #Ya salida en ft/s
-            # print(local_wd-Vw_prof[j])
-            
-            
+            Vw_prof[j], VwS_prof[j], VwD_prof[j] = CRU_wind_eval.wind_eval(wind_model, wind_modelWD, h_prof[j]/3.28, LATs[j], LONGs[j]) #Ya salida en ft/s
             
             
             if otp.wind_sim:
                 #Sacamos consumo para la dist. dx sin viento
-                cons_no_wind = (np.tan(np.arctan(np.sqrt(r_1[j])*W[j])-d_x[j]*ct[j]*q_1[j]*S*CD0[j]*np.sqrt(r_1[j])/Vg_prof[j]))/np.sqrt(r_1[j])
+                cons_no_wind = (np.tan(np.arctan(np.sqrt(r_1[j])*W[j])-d_x[j]*ct[j]*q_1[j]*S*CD0[j]*np.sqrt(r_1[j])/Va_prof[j]))/np.sqrt(r_1[j])
                 # print(cons_no_wind)
                 #Calculamos el tiempo (x_Vh / V) para la misma
                 endurance_Va = np.arctan(q_1[j]*S*np.sqrt(k*CD0[j])*(W[j]-cons_no_wind)/(np.power(q_1[j]*S,2)*CD0[j]+k*W[j]*cons_no_wind))/(ct[j]*np.sqrt(k*CD0[j])) #calculada por la dist. completa, a lo largo de la cual el viento afecta
@@ -142,7 +135,7 @@ def simulador_crucero(profile,N, otp):
                 dist_2r = d_x[j]
             
             #Calculamos el combustible final en ese caso
-            W[j+1] = (np.tan(np.arctan(np.sqrt(r_1[j])*W[j])-dist_2r*ct[j]*q_1[j]*S*CD0[j]*np.sqrt(r_1[j])/Vg_prof[j]))/np.sqrt(r_1[j])
+            W[j+1] = (np.tan(np.arctan(np.sqrt(r_1[j])*W[j])-dist_2r*ct[j]*q_1[j]*S*CD0[j]*np.sqrt(r_1[j])/Va_prof[j]))/np.sqrt(r_1[j])
           
             Thr[j] = Drg[j] #Por condición de crucero
             P_use[j] = Thr[j]*Va_prof[j] #Potencia utilizada
@@ -153,13 +146,9 @@ def simulador_crucero(profile,N, otp):
             #Tomamos valores promedio
             loc_h = h_prof[j]+d_h[j]*0.5
             
-            #Evaluamos viento
-            # loc_Vw = wind_model([loc_h/3.28, LATs[j], LONGs[j]])[0] #Idem inicial
-            # loc_Vw = loc_Vw*3.28
-            loc_Vw= MODELOVIENTO.wind_eval(wind_model, wind_modelWD, loc_h/3.28, LATs[j], LONGs[j])[0] #Ya salida en ft/s
-            
+            #Evaluamos viento        
+            loc_Vw, loc_VwS, loc_VwD = CRU_wind_eval.wind_eval(wind_model, wind_modelWD, loc_h/3.28, LATs[j], LONGs[j]) #Ya salida en ft/s
 
-            # loc_h = h_prof[j]
             #Calculamos info atm
             loc_rho, loc_Temp = funcs.isa_ATM(loc_h)[:2]
             loc_a = np.sqrt(air*R*loc_Temp)
@@ -202,7 +191,7 @@ def simulador_crucero(profile,N, otp):
             W[j+1] = W[j]-d_fuel[j] #Restamos para el próximo peso
             
             #Distancia cubierta en trepada
-            d_rec_trepada[j] = Vg_prof[j]*d_t[j]
+            d_rec_trepada[j] = Va_prof[j]*d_t[j]
             
             if otp.wind_sim: #Si consideramos efecto de viento
                 wind_aporte[j] = loc_Vw*d_t[j] #Velocidad viento x tiempo en trepar
@@ -213,12 +202,10 @@ def simulador_crucero(profile,N, otp):
         
             #Repetimos análisis que resta (recto y nivelado) para nueva alt
             
-            # #Evaluar vel viento local
-            # Vw_prof[j] = wind_model([h_prof[j+1]/3.28,LATs[j],LONGs[j]])[0] #h from ft to m #MEJORAR APROXIMACI+ON DE LAT Y LON ACÁ CON VALOR MEDIO
-            # Vw_prof[j] = Vw_prof[j]*3.28 #ft/s to m/s
-            Vw_prof[j]= MODELOVIENTO.wind_eval(wind_model, wind_modelWD, h_prof[j+1]/3.28, LATs[j], LONGs[j])[0] #Ya salida en ft/s
-            
-            
+            #Evaluar vel viento local
+
+            Vw_prof[j], VwS_prof[j], VwD_prof[j] = CRU_wind_eval.wind_eval(wind_model, wind_modelWD, h_prof[j+1]/3.28, LATs[j], LONGs[j]) #Ya salida en ft/s
+                        
             #Calculamos info atm
             rho[j], Temp[j] = funcs.isa_ATM(h_prof[j+1])[:2] #Usar alt post trepada
             a[j] = np.sqrt(air*R*Temp[j])
@@ -243,11 +230,6 @@ def simulador_crucero(profile,N, otp):
             #Potencia requerida
             P_req[j] = Drg[j]*Va_prof[j]
             
-            if otp.wind_sim: #Si consideramos efecto de viento
-                Vg_prof[j] = Va_prof[j]
-            else:
-                Vg_prof[j] = Va_prof[j] #Vel. aero = Vel tierra
-            
             #Calculamos consumo en el tramo nivelado
             q_1[j] = 0.5*rho[j]*Va_prof[j]**2
             r_1[j] = k/(np.power(q_1[j]*S,2)*CD0[j])
@@ -255,7 +237,7 @@ def simulador_crucero(profile,N, otp):
             
             if otp.wind_sim:
                 #Sacamos consumo para la dist. dx sin viento
-                cons_no_wind = (np.tan(np.arctan(np.sqrt(r_1[j])*W[j+1])-d_restante[j]*ct[j]*q_1[j]*S*CD0[j]*np.sqrt(r_1[j])/Vg_prof[j]))/np.sqrt(r_1[j])
+                cons_no_wind = (np.tan(np.arctan(np.sqrt(r_1[j])*W[j+1])-d_restante[j]*ct[j]*q_1[j]*S*CD0[j]*np.sqrt(r_1[j])/Va_prof[j]))/np.sqrt(r_1[j])
                 #Calculamos el tiempo (x_Vh / V) para la misma
                 endurance_Va = np.arctan(q_1[j]*S*np.sqrt(k*CD0[j])*(W[j+1]-cons_no_wind)/(np.power(q_1[j]*S,2)*CD0[j]+k*W[j+1]*cons_no_wind))/(ct[j]*np.sqrt(k*CD0[j])) #calculada por la dist. completa, a lo largo de la cual el viento afecta
                 
@@ -267,8 +249,7 @@ def simulador_crucero(profile,N, otp):
                 dist_2r = d_restante[j]
             
             #Calculamos el combustible final en ese caso
-            W[j+1] = (np.tan(np.arctan(np.sqrt(r_1[j])*W[j+1])-dist_2r*ct[j]*q_1[j]*S*CD0[j]*np.sqrt(r_1[j])/Vg_prof[j]))/np.sqrt(r_1[j])
-        # print(Vg_prof-Va_prof)
+            W[j+1] = (np.tan(np.arctan(np.sqrt(r_1[j])*W[j+1])-dist_2r*ct[j]*q_1[j]*S*CD0[j]*np.sqrt(r_1[j])/Va_prof[j]))/np.sqrt(r_1[j])
     
 
     consumo_fuel = abs((W[0]-W[N-1]))
@@ -317,14 +298,14 @@ def simulador_crucero(profile,N, otp):
         ax.grid()
 
         fig,ax = plt.subplots()
-        ax.plot(x_prof[:-1]/2.0592e7*3900, WD_prof, marker='x')
+        ax.plot(x_prof[:-1]/2.0592e7*3900, VwD_prof, marker='x')
         ax.set_xlabel("dist [mi]")
         ax.set_ylabel("WD [deg from N]")
         ax.set_title("x vs WD - N: "+str(N))
         ax.grid()
         
         fig,ax = plt.subplots()
-        ax.plot(x_prof[:-1]/2.0592e7*3900, Vw_proyected, marker='x')
+        ax.plot(x_prof[:-1]/2.0592e7*3900, Vw_prof, marker='x')
         ax.set_xlabel("dist [mi]")
         ax.set_ylabel("vel proyectada")
         ax.set_title("x vs proy. WS - N: "+str(N))
@@ -333,7 +314,7 @@ def simulador_crucero(profile,N, otp):
     if otp.output == "only":
         return(consumo_fuel)
     if otp.output == "normal":
-        return(consumo_new_pen, h_prof, x_prof, Va_prof, ts_prof, N)
+        return(consumo_new_pen, h_prof, x_prof, Va_prof, ts_prof, N, Vw_prof, VwD_prof)
     if otp.output =="full":
         print("u crazy")
         
@@ -347,127 +328,140 @@ def optimizame(profile,N,opciones):
     return(w_f)
 
 
-def res_import_export(modo, res, inp, opt):
-    if modo:
-        #Ploteamos
-        if opt.plot.status:
-            
-            fig,ax = plt.subplots()
-            ax.plot(res.x_profile/2.0592e7*3900, res.h_profile,marker='o')
-            ax.set_title("x vs h: "+str(res.N))
-            ax.set_xlabel("dist [mi]")
-            ax.set_ylabel("h [ft]- N: "+str(res.N))
-            ax.grid()
-            fig.suptitle("Consumo calculado: " + str(np.round(res.consumo,2)) + " [lb]")
-            if opt.plot.save:
-                s_name = opt.plot.folder + "/" + opt.plot.filecode + "_hplot"
-                plt.savefig(s_name, dpi=200)
-            if opt.plot.close:
-                plt.close()
-            
-                    
-            fig,ax = plt.subplots()
-            ax.plot(res.x_profile/2.0592e7*3900, res.Va_profile,marker='s')
-            ax.set_xlabel("dist [mi]")
-            ax.set_ylabel("Va [ft/s]")
-            ax.set_title("x vs Va - N: "+str(res.N))
-            ax.grid()
-            fig.suptitle("Consumo calculado: " + str(np.round(res.consumo,2)) + " [lb]")
-            if opt.plot.save:
-                s_name = opt.plot.folder + "/" + opt.plot.filecode + "_Vaplot"
-                plt.savefig(s_name, dpi=200)
-            if opt.plot.close:
-                plt.close()
-            
-            fig,ax = plt.subplots()
-            ax.plot(res.x_profile/2.0592e7*3900 , res.ts_profile,marker='s')
-            ax.set_xlabel("dist [mi]")
-            ax.set_ylabel("ts [adim]")
-            ax.set_title("x vs %ts - N: "+str(res.N))
-            ax.grid()
-            fig.suptitle("Consumo calculado: " + str(np.round(res.consumo,2)) + " [lb]")
-            if opt.plot.save:
-                s_name = opt.plot.folder + "/" + opt.plot.filecode + "_tsplot"
-                plt.savefig(s_name, dpi=200)
-                
-            if opt.plot.close:
-                plt.close()
-
-        if opt.sav.status:
-            loc_file = open(opt.sav.folder+"/"+opt.sav.filename+"_INPUT",'wb')
-            pickle.dump(inp,loc_file)
-            loc_file.close()
-            loc_file = open(opt.sav.folder+"/"+opt.sav.filename+"_RESULT",'wb')
-            pickle.dump(res, loc_file)
-            loc_file.close()
-        return()
-            
-    else:
+def plot_show_export(opt, res):
+    
+        fig,ax = plt.subplots()
+        ax.plot(res.x_profile/2.0592e7*3900, res.h_profile,marker='o')
+        ax.set_title("x vs h: "+str(res.N))
+        ax.set_xlabel("dist [mi]")
+        ax.set_ylabel("h [ft]- N: "+str(res.N))
+        ax.grid()
+        fig.suptitle("Consumo calculado: " + str(np.round(res.consumo,2)) + " [lb]")
+        if opt.save:
+            s_name = opt.folder + "/" + opt.filecode + "_hplot"
+            plt.savefig(s_name)
+        if opt.close:
+            plt.close()
         
-        loc_file = open(opt.sav.folder+"/"+opt.sav.filename+"_INPUT",'rb')
-        inp = pickle.load(loc_file)
-        loc_file.close()
-        loc_file = open(opt.sav.folder+"/"+opt.sav.filename+"_RESULT",'rb')
-        res = pickle.load(loc_file)
-        loc_file.close() 
-        return(res, inp)
+                
+        fig,ax = plt.subplots()
+        ax.plot(res.x_profile/2.0592e7*3900, res.Va_profile,marker='s')
+        ax.set_xlabel("dist [mi]")
+        ax.set_ylabel("Va [ft/s]")
+        ax.set_title("x vs Va - N: "+str(res.N))
+        ax.grid()
+        fig.suptitle("Consumo calculado: " + str(np.round(res.consumo,2)) + " [lb]")
+        if opt.save:
+            s_name = opt.folder + "/" + opt.filecode + "_Vaplot"
+            plt.savefig(s_name)
+        if opt.close:
+            plt.close()
+        
+        fig,ax = plt.subplots()
+        ax.plot(res.x_profile/2.0592e7*3900 , res.ts_profile,marker='s')
+        ax.set_xlabel("dist [mi]")
+        ax.set_ylabel("ts [adim]")
+        ax.set_title("x vs %ts - N: "+str(res.N))
+        ax.grid()
+        fig.suptitle("Consumo calculado: " + str(np.round(res.consumo,2)) + " [lb]")
+        if opt.save:
+            s_name = opt.folder + "/" + opt.filecode + "_tsplot"
+            plt.savefig(s_name)
+            
+        if opt.close:
+            plt.close()
+            
+        fig, ax = plt.subplots()
+        ax.plot(res.x_profile[:-1]/2.0592e7*3900, res.Vw_profile, marker = 'o')
+        ax.set_xlabel("dist [mi]")
+        ax.set_ylabel("wind speed [ft/s]")
+        ax.set_title("x vs %ts - N: "+str(res.N))
+        ax.grid()
+        fig.suptitle("Consumo calculado: " + str(np.round(res.consumo,2)) + " [lb]")
+        if opt.save:
+            s_name = opt.folder + "/" + opt.filecode + "_Vwplot"
+            plt.savefig(s_name)
+            
+        if opt.close:
+            plt.close()
+            
+        fig, ax = plt.subplots()
+        ax.plot(res.x_profile[:-1]/2.0592e7*3900, res.WD_profile, marker = 's')
+        ax.set_xlabel("dist [mi]")
+        ax.set_ylabel("Wind dir from N [deg]")
+        ax.set_title("x vs %ts - N: "+str(res.N))
+        ax.grid()
+        fig.suptitle("Consumo calculado: " + str(np.round(res.consumo,2)) + " [lb]")
+        if opt.save:
+            s_name = opt.folder + "/" + opt.filecode + "_WDplot"
+            plt.savefig(s_name)
+            
+        if opt.close:
+            plt.close()
+            
+        return('fin de ploteo')
+
 ##########################################
 #Definición de clases para la simulación
 
-class export_opts():
-    class sav:
-        status = True
-        def _filenam_(dat, folder, name):
-            dat.folder = folder
-            dat.filename = name
-        
-    class plot:
-        save = True
-        status = True
-        close = True
-        def _fignam_(dat, folder, name):
-            dat.folder = folder
-            dat.filecode = name
+class iexport_XMLs():
+    '''Clase para opciones de exportar / importar files con Pickle'''
+    def __init__(self, ruta, filename):
+            self.ruta = ruta
+            self.filename = filename
+            self.filetipo = 0
+            
+class opts_plots():
+    '''Clase para opciones de ploteo prolijo y savefigs con MatplotLib'''
+    def __init__(self, folder, name, save,close):
+        self.folder = folder
+        self.filecode = name
+        self.status = True
+        self.save = bool(save)
+        self.close = bool(close)
 
         
 class res_SIM():
-    def _basicRES_(res, consumo, h_profile, x_profile, Va_profile, ts_profile, N):
+    def _basicRES_(res, consumo, h_profile, x_profile, Va_profile, ts_profile, N, Vw_profile, WD_profile):
         res.consumo = consumo
         res.h_profile = h_profile
         res.x_profile = x_profile
         res.Va_profile = Va_profile
         res.ts_profile = ts_profile
+        res.Vw_profile = Vw_profile
+        res.WD_profile = WD_profile
         res.N = N
     class NM_params():
         pass
 
-class otp_optimizar():
-    def __init__(self):
-        self.pen_flag = False
-        self.wind_sim = True
-        self.output = "normal"
-        self.plot = False
-        
-class otp_test():
-    def __init__(self):
-        self.pen_flag = True
-        self.wind_sim = False
-        self.output = "normal"
-        self.plot = True
-        
-class otp_test_wind():
-    def __init__(self):
-        self.pen_flag = True
-        self.wind_sim = True
-        self.output = "normal"
-        self.plot = True
+class sim_opciones():
+    ''' Clase para opciones de ejecución del simulador \n
+    optimizar = Corrida sin salidas
+    evaluar = Corrida con salidas
+    kwargs: pen, plot, output
+    Opciones por default 1,1,normal
+    '''
+    def __init__(self, tipo, wind, **kwargs):
+        if tipo == 'optimizar':
+            self.pen_flag = False
+            self.wind_sim = bool(wind)
+            self.output = "normal"
+            self.plot = False
+        elif tipo == 'evaluar':
+            pen_flag = True
+            plot = False
+            output = "normal"
+            if 'pen' in kwargs:
+                pen_flag = kwargs.get('pen')
+            if 'plot' in kwargs:
+                plot = kwargs.get('plot')
+            if 'output' in kwargs:
+                output = kwargs.get('output')
+            self.pen_flag = bool(pen_flag)
+            self.wind_sim = bool(wind)
+            self.output = output
+            self.plot = bool(plot)
 
-class opt_test():
-    def cond(pen,wind,output,plot):
-        opt_test.pen_flag = pen
-        opt_test.output = output
-        opt_test.wind_sim = wind
-        opt_test.plot = plot
 
 class input_profile():
     '''Clase para definir inputs y luego exportar fácilmente'''
@@ -480,48 +474,19 @@ class input_profile():
         perfil.prof_eval[2*N:] = h
         
 if __name__ == "__main__":
-
-    N = 32
-    
-    V_test = 0.9
-    ts_test = 0.95
-    h_test = 1
-    
-    prof_prueba = input_profile()
-    prof_prueba._dots_(N, V_test, ts_test, h_test)
-    
-    opciones = otp_test()
-    
-    resultados = res_SIM()
-    
-    resultados._basicRES_(*simulador_crucero(prof_prueba.prof_eval, prof_prueba.N, opciones))
-    
-    
-    h_test = np.linspace(1.1,1.25,N-1)
-    
-    # opciones_optimizar = otp_optimizar()
-    
-    # sim_results = res_SIM()
-    # prof_input = input_profile()
-    # prof_input._dots_(N, V_test, ts_test, h_test)
-    
-    # opciones_exportar = export_opts()
-    # opciones_exportar.plot._fignam_(opciones_exportar.plot,'res','N_'+str(N))
-    # opciones_exportar.sav._filenam_(opciones_exportar.sav, 'res','N_'+str(N))
-    
-    # sim_results.NM_params = sp.minimize(optimizame, prof_input.prof_eval, args=(prof_input.N,opciones_optimizar), method='Nelder-Mead', options={'maxiter': 1e7}, tol=1e-2)
-
-    # if sim_results.NM_params.success:
-    #     sim_results._basicRES_(*simulador_crucero(sim_results.NM_params.x, prof_input.N, opciones))
-    #     res_import_export(1,sim_results,sim_results.NM_params.x,export_opts)
+    pass
 
 
 def test_vsN():
-    N = [4, 8, 32, 64, 128]
+    N = [10, 20, 40, 80, 100]
+    consumos = []
+    dts = []
+    main_ruta = 'res'
     #Perfil que nos interesa
     
     for i in N:
         
+        t1 = time.time()
         V_test = 0.9
         ts_test = 0.9
         h_test = np.linspace(32.5e3/35e3,1.1,i-1)
@@ -529,22 +494,50 @@ def test_vsN():
         prof_input = input_profile()
         prof_input._dots_(i, V_test, ts_test, h_test)
 
-        opciones = otp_optimizar()
+        NM_opciones = sim_opciones('optimizar',1)
+        ev_opciones = sim_opciones('evaluar',1)
 
         sim_results = res_SIM()
         
-        opciones_exportar = export_opts()
-        opciones_exportar.plot._fignam_(opciones_exportar.plot,'res','N_'+str(i))
-        opciones_exportar.sav._filenam_(opciones_exportar.sav, 'res','N_'+str(i))
+        XML_opciones = iexport_XMLs(main_ruta, 'N_'+str(i))
+        plots_opciones = opts_plots(main_ruta, 'N_'+str(i),1,0)
+
         
-        sim_results.NM_params = sp.minimize(optimizame, prof_input.prof_eval, args=(prof_input.N,opciones), method='Nelder-Mead', options={'maxiter': 1e7}, tol=1e-2)
-    
+        sim_results.NM_params = sp.minimize(optimizame, prof_input.prof_eval, args=(prof_input.N,NM_opciones), method='Nelder-Mead', options={'maxiter': 1e7}, tol=1e-2)
+        t2 = time.time()
         if sim_results.NM_params.success:
-            sim_results._basicRES_(*simulador_crucero(sim_results.NM_params.x, prof_input.N, opciones))
-            res_import_export(1,sim_results,sim_results.NM_params.x,export_opts)
+            sim_results._basicRES_(*simulador_crucero(sim_results.NM_params.x, prof_input.N, ev_opciones))
+            consumos.append(sim_results.consumo)
+            XML_opciones.filetipo = 'RES'
+            BN_import_export(1,XML_opciones, sim_results)
+            XML_opciones.filetipo = 'INP'
+            BN_import_export(1,XML_opciones, sim_results.NM_params.x)
+            plot_show_export(plots_opciones, sim_results)
+            dts.append(t2-t1)
         else:
             print("Non success sim")
     return('fin')
 
-
+def interp_results():
+    ruta = 'res'
+    perfil_entrada = BN_import_export(0,ruta,'N_10_INPUT')
+    resultados = BN_import_export(0,ruta,'N_10_RESULT')
+    opciones = sim_opciones('evaluar',0)
+    if resultados.NM_params.success:
+        print(simulador_crucero(perfil_entrada,perfil_entrada.N, opciones))
+    return(resultados, perfil_entrada)
+    
+def BN_import_export(modo,opt,inp):
+    ''' modo 0: cargar resultados \n
+        modo 1: exportar resultados'''
+    if modo:
+        loc_file = open(opt.ruta+"/"+opt.filename+opt.filetipo,'wb')
+        pickle.dump(inp,loc_file)
+        loc_file.close()
+        return('data saved')
+    else:
+        loc_file = open(opt.ruta+"/"+opt.filename+opt.filetipo,'rb')
+        inp = pickle.load(loc_file)
+        loc_file.close()
+        return(inp)
 
