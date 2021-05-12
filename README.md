@@ -12,6 +12,8 @@ El código en general requiere las siguientes librerías:
 - Openturns
 - Time
 - os
+- SCIKIT AERO https://pypi.org/project/scikit-aero/
+- IGRA https://pypi.org/project/igra/
 ```
 
 ## Archivos subidos - comentarios y descripción
@@ -87,18 +89,16 @@ Archivo principal.
 
 Contiene la info del modelo atmosférico, el modelo del motor (copiado de la tesis ejemplo), el modelo de CD0 de la polar del avión y los datos del avión (S, peso inicial, AR, Oswald). Contiene algunas líneas comentadas que se usaron originalmente para plotear curvas del motor. Se las va a quitar.
 
-#### Funciones
+#### Funciones / Clases
 ```
-CD0_model():
+class BO_767300():
 ```
+
 ```
-planedata():
-```
-```
-turbofan():
+fun turbofan():
 ```
 ```
-isa_ATM():
+fun isa_ATM(h [SI]):
 ```
 
 ### CRU_wind_eval
@@ -109,9 +109,11 @@ Función única. Determina rumbo (por ahora ejemplo fijo, se actualizará consid
 **Devuelve en FT/S** (ver si cambiar)
 
 ### CRU_nav_module
-Archivo auxiliar. Permite plotear estaciones y ruta genérica sobre un mapa del lugar. 
+Archivo auxiliar. Permite plotear estaciones y ruta genérica sobre un mapa del lugar.
 
-Código en desarrollo, para calcular distancias entre dos puntos [LAT,LON] usando Cartopy (define un Geoide WGS84), lo que debería mejorar la aproximación respecto a obtenerla y cargarla manualmente desde Google, por ejemplo. 
+Funciones para cálculo de distancias, cabeceo y ruta paso a paso mediante Cartopy. Waypoints definidos por [LATs], [LONGs]. Se utiliza Geoide WGS84. 
+
+Docs: https://pyproj4.github.io/pyproj/stable/api/geod.html
 
 ### CRU_extra_text
 Archivo auxiliar.
