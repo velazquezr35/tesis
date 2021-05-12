@@ -29,29 +29,6 @@ A continuación se presenta cada uno, de manera breve.
 Archivo principal.
 
 Código principal para el cálculo de crucero y su optimización. Importa y utiliza otros módulos.
-#### Clases
-
-```
-class export_opts()
-```
-Clase para opciones de exportación de perfiles de vuelo y figuras: Define nombres y carpetas.
-
-```
-class res_SIM()
-```
-Clase para guardar (y luego exportar con Pickle) los perfiles principales resultado de la simulación (h, X, V, ts, N), el consumo y los parámetros que devuelve el optimizador (número de iteraciones, tolerancia, etc.).
-
-```
-class otp_i()
-```
-Clases para definir forma de cálculo de la función principal. Contiene flags.
-
-
-```
-class input_profile()
-```
-Clase para definir perfiles de vuelo de entrada (sea un guess o un cálculo 'manual').
-
 
 #### Funciones
 ```
