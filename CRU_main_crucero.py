@@ -17,12 +17,21 @@ import CRU_wind_eval
 import pickle
 import time
 
+###############################################################################################
+
 #Parámetros generales
+
+###############################################################################################
+
+#Opciones globales MatPlotlib
 plt.rcParams.update({'font.size': 15})
 
-#Definición viento
+#Definición modelos de viento
 wind_model = tesis_wind.cargar('wind_models','full_BR_AR_WS')
 wind_modelWD = tesis_wind.cargar('wind_models','full_BR_AR_WD')
+
+#Datos atmosféricos y/o del avión globales en sistema EN_tesis
+plane = funcs.BO_767300()
 
 ###############################################################################################
 
@@ -38,31 +47,35 @@ def simulador_crucero(N, profile, otp):
             - otp: opciones para ejecución y muestra de resultados
             
             '''
+    adim_prof = {'Va':800, 'h':32e3, 'ts':1, 'info':'Valores adim. del perfil input en sistema EN_tesis'}
     
-    print(len(profile), N)
-    Va_prof = profile[:N]*800 #adim a 800 [ft/s]
-    ts_prof = profile[N:2*N]
+    Va_prof = profile[:N]*adim_prof['Va']
+    ts_prof = profile[N:2*N]*adim_prof['ts']
     h_prof = np.zeros(N)
-    h_prof[1:] = profile[2*N:]*32e3
-    h_prof[0] = 32000 #adim a 32 [kft]
+    h_prof[1:] = profile[2*N:]*adim_prof['h']
+    h_prof[0] = 32000
 
-    #Data aire y avión
-    air = 1.4 #gamma aire
-    R = 1716 #Cte aire para el sist. de un.
-    [W0, S, AR, e] = funcs.planedata()
-    k = 1/(AR*e*np.pi) #Factor os. para polar simplificada
+    #Datos locales del avión
+    W0 = plane.data['W0']*funcs.SI_2_EN['mass']
+    S = plane.data['S']*funcs.SI_2_EN['area']
+    AR = plane.data['AR']
+    e = plane.data['e']
+    k = 1/(AR*e*np.pi) #Oswald
     
     #Definición vuelo
     # dist = 1.32e7 #2.0592e7 #pies (Distancia original del caso de tesis)
-    dist = 2.0592e7 #3900 millas
+    dist = 2.0592e7 #[ft], 3900 [millas]
+
+    ###################################
+    #Perfiles de variables de interés
+    ###################################
     
-    #Variables que nos interesan    
     #Perfiles del viento
     Vw_prof = np.zeros(N-1)
     VwS_prof = np.zeros(N-1)
     VwD_prof = np.zeros(N-1)
 
-    
+    #Perfiles generales
     CL, CD, CD0 = np.zeros((3,N))
     rho, Temp = np.zeros((2,N))
     a, Mach = np.zeros((2,N))
@@ -85,21 +98,17 @@ def simulador_crucero(N, profile, otp):
     
     LATs, LONGs = np.zeros((2,N))
     
-    # print(x_prof, d_x)
-    print(d_h)
-    
     for j in range(0,N-1): #Recorremos los M segmentos
 
+        #LONGs, LATs = nav.module(etc) #IN PROGRESS
         LONGs[j] = -54.81 + 54.81/3900 *x_prof[j]*0.000189394 #TEST EVALUAR INICIO; LUEGO LLEVAR A PUNTO MEDIO!
         LATs[j] = -68.31 + 17.31/3900*x_prof[j]*0.000189394 #TEST EVALUAR INICIO; LUEGO LLEVAR A PUNTO MEDIO!
-        #Determinar si trepa o mantiene:
-        
+                
         if (d_h[j] == 0):
                       
             #Vuelo Va - h cte
             #Calculamos info atm
-            rho[j], Temp[j] = funcs.isa_ATM(h_prof[j])[:2]
-            a[j] = np.sqrt(air*R*Temp[j])
+            rho[j], Temp[j], a[j] = funcs.isa_ATM(h_prof[j])[:3]
             Mach[j] = Va_prof[j]/a[j]
             
             #Calculamos empuje motor con la info atm
@@ -111,7 +120,7 @@ def simulador_crucero(N, profile, otp):
             
             #Coeficientes y fuerzas aerodinámicas
             CL[j] = 2*W[j]/(rho[j]*S*np.power(Va_prof[j],2))
-            CD0[j] = funcs.CD0_model(Mach[j]) #Con polar
+            CD0[j] = plane.CD0_model(Mach[j]) #Con polar
             CD[j] = CD0[j] + k*np.power(CL[j],2)
             
             Drg[j] = 0.5*rho[j]*np.power(Va_prof[j],2)*S*CD[j]
@@ -126,7 +135,7 @@ def simulador_crucero(N, profile, otp):
             
             #Evaluar vel viento local
 
-            Vw_prof[j], VwS_prof[j], VwD_prof[j] = CRU_wind_eval.wind_eval(wind_model, wind_modelWD, h_prof[j]/3.28, LATs[j], LONGs[j]) #Ya salida en ft/s
+            Vw_prof[j], VwS_prof[j], VwD_prof[j] = CRU_wind_eval.wind_eval(wind_model, wind_modelWD, h_prof[j]/funcs.SI_2_EN['lon'], LATs[j], LONGs[j]) #Ya salida en ft/s
             
             
             if otp['wind_sim']:
@@ -156,11 +165,10 @@ def simulador_crucero(N, profile, otp):
             loc_h = h_prof[j]+d_h[j]*0.5
             
             #Evaluamos viento        
-            loc_Vw, loc_VwS, loc_VwD = CRU_wind_eval.wind_eval(wind_model, wind_modelWD, loc_h/3.28, LATs[j], LONGs[j]) #Ya salida en ft/s
+            loc_Vw, loc_VwS, loc_VwD = CRU_wind_eval.wind_eval(wind_model, wind_modelWD, loc_h/funcs.SI_2_EN['lon'], LATs[j], LONGs[j]) #Ya salida en ft/s
 
             #Calculamos info atm
-            loc_rho, loc_Temp = funcs.isa_ATM(loc_h)[:2]
-            loc_a = np.sqrt(air*R*loc_Temp)
+            loc_rho, loc_Temp, loc_a = funcs.isa_ATM(loc_h)[:3]
             loc_Mach = Va_prof[j]/loc_a
             
             #Calculamos empuje motor con la info media
@@ -171,7 +179,7 @@ def simulador_crucero(N, profile, otp):
             
             #Coeficientes y fuerzas aerodinámicas
             loc_CL = 2*W[j]/(loc_rho*S*np.power(Va_prof[j],2))
-            loc_CD0 = funcs.CD0_model(loc_Mach) #Con polar
+            loc_CD0 = plane.CD0_model(loc_Mach) #Con polar
             loc_CD = loc_CD0 + k*np.power(loc_CL,2)
             
             loc_Drg = 0.5*loc_rho*np.power(Va_prof[j],2)*S*loc_CD
@@ -216,8 +224,7 @@ def simulador_crucero(N, profile, otp):
             Vw_prof[j], VwS_prof[j], VwD_prof[j] = CRU_wind_eval.wind_eval(wind_model, wind_modelWD, h_prof[j+1]/3.28, LATs[j], LONGs[j]) #Ya salida en ft/s
                         
             #Calculamos info atm
-            rho[j], Temp[j] = funcs.isa_ATM(h_prof[j+1])[:2] #Usar alt post trepada
-            a[j] = np.sqrt(air*R*Temp[j])
+            rho[j], Temp[j], a[j] = funcs.isa_ATM(h_prof[j+1])[:3] #Usar alt post trepada
             Mach[j] = Va_prof[j]/a[j]
             
             #Calculamos empuje motor con la info atm
@@ -231,7 +238,7 @@ def simulador_crucero(N, profile, otp):
             
             #Coeficientes y fuerzas aerodinámicas
             CL[j] = 2*W[j+1]/(rho[j]*S*np.power(Va_prof[j],2))
-            CD0[j] = funcs.CD0_model(Mach[j]) #Con polar
+            CD0[j] = plane.CD0_model(Mach[j]) #Con polar
             CD[j] = CD0[j] + k*np.power(CL[j],2)
             
             Drg[j] = 0.5*rho[j]*np.power(Va_prof[j],2)*S*CD[j]
