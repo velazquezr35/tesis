@@ -15,37 +15,46 @@ SI_air = {'R': 287, 'g':9.81, 'gamma': 1.4}
 SI_2_EN = {'R_air': 5.979094077, 'area': 10.7639, 'lon':3.28084, 'temp': 1.8, 'den':0.0019577143, 'pres':0.020885434273039, 'spd':3.28084, 'mass':2.20462}
 
 
-
 class BO_767300():
     '''All units in SI'''
     data = {'W0':181436.8,'S':283.3542539, 'AR':8, 'e':0.85}
     
-    def CD0_model(Ma):
+    def CD0_model(self,Ma):
         if (Ma<=0.8):
             CD0 = 0.02
         else:
             CD0 = 0.02 + 0.4*np.power(Ma-0.82,2)
         return(CD0)
 
-def isa_ATM(h,output_un): #ingreso input en FT, paso a metros
+def isa_ATM(h, output_un): #ingreso input en FT, paso a metros
     '''Función atmosférica en SI basada en modelo U.S. 1976 Standard Atmosphere \n
-    input: h [SI]
-    output: T, p, rho [selecc]'''
+    input: h [SI] \n
+    output: T, p, rho [selecc] \n
+    mode: 'EN_tesis': Salida sistema EN tesis \n
+            ' ': Salida SI '''
     eco, T, p, rho = coesa.table(h)
     a = np.sqrt(SI_air['gamma']*SI_air['R']*T)
     if output_un=='EN_tesis':
         T = T*SI_2_EN['temp']
         rho = rho*SI_2_EN['den']
         a = a*SI_2_EN['spd']
-        p = p*SI_2_EN['pres']        
+        p = p*SI_2_EN['pres']
+    elif output_un =='SI':
+        pass
+    else:
+        return(0)        
     return([rho,T,a,p])
 
 def turbofan(V0,h):
+    '''Input: V0[ft/s], h[ft]\n
+    pass to ISA: [SI]\n
+    cálculos internos: [EN_tesis]
+    '''
     #h > FT, V0 > FT/s
     if (V0==0):
         V0 = 0.0000001
     
-    rho,T0,a0,P0 = isa_ATM(h,'EN_tesis') #input ISA en ft
+    rho,T0,a0,P0 = isa_ATM(h/SI_2_EN['lon'],'EN_tesis') #input ISA en ft
     M0 = V0/a0
 
     gamma_c = np.polyval([-1.20614668523318e-16,5.49680519900033e-13,-9.17212621649489e-10, 6.48730229306455e-07,-0.000205746784973442,1.42564262883996],T0)
