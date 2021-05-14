@@ -1,4 +1,4 @@
-# Tesis - UPDATE 27/04
+# Tesis - UPDATE 13/05
 Tesis Rodrigo Velazquez - Optimizador de crucero + Modelo de viento 3D WS//WD. 
 
 El código en general requiere las siguientes librerías:
@@ -12,6 +12,7 @@ El código en general requiere las siguientes librerías:
 - Openturns
 - Time
 - os
+- pyproj
 - SCIKIT AERO https://pypi.org/project/scikit-aero/
 - IGRA https://pypi.org/project/igra/
 ```
@@ -36,16 +37,6 @@ simulador_crucero():
 ```
 Función principal que calcula el consumo de combustible para un perfil dado. Contiene algunas opciones extras para ploteo rápido de figuras (no definitivo seguramente). Calcula utilizando las ecuaciones de vuelo, preserva las distintas variables y penaliza de manera previa al *return*. Devuelve consumo y perfiles de variables principales.
 
-```
-optimizame():
-```
-Función auxiliar que solamente devuelve el consumo de *simulador_crucero*. Se la definió siguiendo el código de la tesis ejemplo, pero seguramente se la quite, tomando output[0] (que es el consumo) directamente dentro del optimizador.
-
-```
-res_import_export():
-```
-Función general para ploteo y guardado de figuras, más prolijo y completo que el built-in del simulador. También exporta e importa usando Pickle las distintas clases de la simulación.
-
 #### Extras del archivo
 
 Contiene una función para comparar consumo vs N y algunas líneas comentadas al cierre. En proceso de limpieza / mejora.
@@ -64,7 +55,7 @@ Función única del código, que realiza lo anterior.
 ### CRU_extra_funcs
 Archivo principal.
 
-Contiene la info del modelo atmosférico, el modelo del motor (copiado de la tesis ejemplo), el modelo de CD0 de la polar del avión y los datos del avión (S, peso inicial, AR, Oswald). Contiene algunas líneas comentadas que se usaron originalmente para plotear curvas del motor. Se las va a quitar.
+Contiene la info del modelo atmosférico, el modelo del motor (copiado de la tesis ejemplo), el modelo de CD0 de la polar del avión y los datos del avión (S, peso inicial, AR, Oswald).
 
 #### Funciones / Clases
 ```
@@ -86,18 +77,27 @@ Función única. Determina rumbo (por ahora ejemplo fijo, se actualizará consid
 **Devuelve en FT/S** (ver si cambiar)
 
 ### CRU_nav_module
-Archivo auxiliar. Permite plotear estaciones y ruta genérica sobre un mapa del lugar.
+Archivo auxiliar. 
 
-Funciones para cálculo de distancias, cabeceo y ruta paso a paso mediante Cartopy. Waypoints definidos por [LATs], [LONGs]. Se utiliza Geoide WGS84. 
+Permite plotear estaciones y ruta genérica sobre un mapa del lugar.
 
-Docs: https://pyproj4.github.io/pyproj/stable/api/geod.html
+Funciones para cálculo de distancias, cabeceo y ruta paso a paso mediante Cartopy/Pyproj. Waypoints definidos por [LATs], [LONGs]. Se utiliza Geoide WGS84.
 
-### CRU_extra_text
+### CRU_data_manag
+Archivo principal.
+
+Manejo de archivos BIN para exportar e importar perfiles (inputs, parámetros y resultados), con Pickle.
+Funciones de generación de perfiles __dicts__ 
+Manejo de archivos de texto para guardar/cargar perfiles de vuelo en un array dentro de un .txt.
+
+### CRU_plot_module
 Archivo auxiliar.
 
-Manejo de archivos de texto para guardar/cargar perfiles de vuelo en un array dentro de un .txt. Actualmente se está agregando para trabajar directamente con Pickle (y guardar clases enteras con más info).
+Ploteo de perfiles de vuelo.
+Ploteo de gráficas comparativas para corridas multi-N.
 
-## 
+#
+
 ### META_main_kringing
 Archivo principal.
 
