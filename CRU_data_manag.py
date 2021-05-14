@@ -71,9 +71,15 @@ def gen_opt_plots(ruta,filecode,status,save,close):
     ruta, filecode, status, b(save), b(close)'''
     return({'ruta':ruta,'filecode':filecode, 'status':status, 'save':bool(save), 'close':bool(close)})
 
-def gen_res_SIM(W_f, h_prof, x_prof, Va_prof, ts_prof, Vw_prof, VD_prof, N, wind_sim):
-    return({'W_f':W_f, 'h_prof':h_prof, 'x_prof':x_prof, 'Va_prof':Va_prof, 'ts_prof':ts_prof,'Vw_prof':Vw_prof, 'VD_prof':VD_prof, 'N':N, 'wind_sim':bool(wind_sim)})
 
+def gen_res_SIM(salida, W_f, h_prof, x_prof, Va_prof, ts_prof, Vw_prof, VD_prof, N, extras, wind_sim):
+    if salida == "normal":
+        return({'W_f':W_f, 'h_prof':h_prof, 'x_prof':x_prof, 'Va_prof':Va_prof, 'ts_prof':ts_prof,'Vw_prof':Vw_prof, 'VD_prof':VD_prof, 'N':N, 'wind_sim':bool(wind_sim)})
+
+    elif salida == "full":
+        return({'extras':extras, 'W_f':W_f, 'h_prof':h_prof, 'x_prof':x_prof, 'Va_prof':Va_prof, 'ts_prof':ts_prof,'Vw_prof':Vw_prof, 'VD_prof':VD_prof, 'N':N, 'wind_sim':bool(wind_sim)})
+
+        
 def gen_sim_opciones(tipo, wind, **kwargs):
     ''' Clase para opciones de ejecución del simulador \n
     optimizar = Corrida sin salidas \n

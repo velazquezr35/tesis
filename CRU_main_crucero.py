@@ -15,8 +15,7 @@ import CRU_data_manag as data_manag
 import META_mods_utiles as tesis_wind #Acomodar y poner otro
 import CRU_plot_module as mplots
 import CRU_wind_eval
-import pickle
-import time
+
 
 ###############################################################################################
 
@@ -48,8 +47,11 @@ def simulador_crucero(profile,N, otp):
             - otp: opciones para ejecución y muestra de resultados
             
             '''
+    #Factores de escala y dim
     adim_prof = {'Va':800, 'h':32e3, 'ts':1, 'info':'Valores adim. del perfil input en sistema EN_tesis'}
     
+    #Definición de perfiles
+    M = N-1
     Va_prof = profile[:N]*adim_prof['Va']
     ts_prof = profile[N:2*N]*adim_prof['ts']
     h_prof = np.zeros(N)
@@ -72,25 +74,25 @@ def simulador_crucero(profile,N, otp):
     ###################################
     
     #Perfiles del viento
-    Vw_prof = np.zeros(N-1)
-    VwS_prof = np.zeros(N-1)
-    VwD_prof = np.zeros(N-1)
-
+    Vw_prof = np.zeros(M)
+    VwS_prof = np.zeros(M)
+    VwD_prof = np.zeros(M)
+    
     #Perfiles generales
     CL, CD, CD0 = np.zeros((3,N))
     rho, Temp = np.zeros((2,N))
     a, Mach = np.zeros((2,N))
     Thr_disp, ct, cth = np.zeros((3,N))
-    Thr, Drg = np.zeros((2,N-1))
+    Thr, Drg = np.zeros((2,M))
     P_disp, P_req, P_use = np.zeros((3,N))
     W = np.zeros(N)
     W[0] = W0
     q_1, B, r_1 = np.zeros((3,N))
     RC, d_t, d_fuel_dot, d_fuel = np.zeros((4,N))
-    d_rec_trepada, d_restante = np.zeros((2,N-1))
-    Thr_trepada, Drg_trepada = np.zeros((2,N-1))
-    endurance_Va, endurance_Vt = np.zeros((2,N-1))
-    wind_aporte = np.zeros(N-1)
+    d_rec_trepada, d_restante = np.zeros((2,M))
+    Thr_trepada, Drg_trepada = np.zeros((2,M))
+    endurance_Va, endurance_Vt = np.zeros((2,M))
+    wind_aporte = np.zeros(M)
     
     x_prof = np.linspace(0,dist,N)
     
@@ -99,7 +101,10 @@ def simulador_crucero(profile,N, otp):
     
     LATs, LONGs = np.zeros((2,N))
     
-    for j in range(0,N-1): #Recorremos los M segmentos
+    acc = np.zeros(M)
+    tray_gamma = np.zeros(M)
+    
+    for j in range(0,M): #Recorremos los M segmentos
 
         #LONGs, LATs = nav.module(etc) #IN PROGRESS
         LONGs[j] = -54.81 + 54.81/3900 *x_prof[j]*0.000189394 #TEST EVALUAR INICIO; LUEGO LLEVAR A PUNTO MEDIO!
@@ -109,6 +114,7 @@ def simulador_crucero(profile,N, otp):
                       
             #Vuelo Va - h cte
             #Calculamos info atm
+            
             rho[j], Temp[j], a[j] = funcs.isa_ATM(h_prof[j]/funcs.SI_2_EN['lon'],'EN_tesis')[:3]
             Mach[j] = Va_prof[j]/a[j]
             
@@ -153,6 +159,10 @@ def simulador_crucero(profile,N, otp):
             else: #si no, directamente la distancia del tramo
                 dist_2r = d_x[j]
             
+            #Tiempo para dist_2r:
+            endurance_Vt[j] = dist_2r/Va_prof[j]
+            acc[j] = Va_prof[j]/endurance_Vt[j]
+            
             #Calculamos el combustible final en ese caso
             W[j+1] = (np.tan(np.arctan(np.sqrt(r_1[j])*W[j])-dist_2r*ct[j]*q_1[j]*S*CD0[j]*np.sqrt(r_1[j])/Va_prof[j]))/np.sqrt(r_1[j])
           
@@ -192,7 +202,7 @@ def simulador_crucero(profile,N, otp):
             else:
                 loc_Thr = ts_prof[j]*loc_Drg
             
-            loc_gamma = loc_Thr/W[j] - loc_E
+            tray_gamma[j] = loc_Thr/W[j] - loc_E
             
             Thr_trepada[j] = loc_Thr
             Drg_trepada[j] = loc_Drg
@@ -265,6 +275,9 @@ def simulador_crucero(profile,N, otp):
             else: #si no, directamente la distancia del tramo que falta
                 dist_2r = d_restante[j]
             
+            endurance_Vt[j] = (dist_2r+d_restante[j])/Va_prof[j]
+            acc[j] = Va_prof[j]/endurance_Vt[j]
+            
             #Calculamos el combustible final en ese caso
             W[j+1] = (np.tan(np.arctan(np.sqrt(r_1[j])*W[j+1])-dist_2r*ct[j]*q_1[j]*S*CD0[j]*np.sqrt(r_1[j])/Va_prof[j]))/np.sqrt(r_1[j])
     
@@ -335,29 +348,35 @@ def simulador_crucero(profile,N, otp):
     if otp['output'] == "only":
         return(consumo_post_pen)
     elif otp['output'] == "normal":
-        return(consumo_post_pen, h_prof, x_prof, Va_prof, ts_prof, Vw_prof, VwD_prof, N)
+        return(otp['output'], consumo_post_pen, h_prof, x_prof, Va_prof, ts_prof, Vw_prof, VwD_prof, N, 0)
     if otp['output'] =="full":
         print("In progress - Salida completa")
+        extras = {'CL_prof':CL, 'CD_prof':CD, 'endurance':endurance_Vt, 'acc_prof':acc, 'tray_gamma':tray_gamma}
+        return(otp['output'], consumo_post_pen, h_prof, x_prof, Va_prof, ts_prof, Vw_prof, VwD_prof, N, extras)
+        
         
 
 if __name__ == "__main__":
-    N = 16
-    NM_opciones = data_manag.gen_sim_opciones('optimizar',1)
-    V_test = 0.9
-    ts_test = 0.9
-    h_test = np.linspace(32.5e3/35e3,1.1,N-1)
-    perfil_entrada = data_manag.gen_input_profile(N, V_test, ts_test, h_test)
-    
-    NM_results = sp.minimize(simulador_crucero, perfil_entrada['prof_eval'], args=(perfil_entrada['N'],NM_opciones),method='Nelder-Mead', options={'maxiter': 1e7}, tol=1e-1)
-    NM_results['N'] = N
-    
-    data_manag.BN_import_export(1,{'ruta':"res",'filename':"NM_output_"+str(N)+"W"+str(NM_opciones['wind_sim'])},NM_results)    
-    ev_opciones = data_manag.gen_sim_opciones('evaluar',1,pen=True)
-    SIM_results = data_manag.gen_res_SIM(*simulador_crucero(NM_results.x, NM_results.N, ev_opciones),NM_opciones['wind_sim'])
-    data_manag.BN_import_export(1,{'ruta':"res",'filename':"RES_output_"+str(N)+"W"+str(NM_opciones['wind_sim'])},SIM_results)
-    
-    plot_opciones = data_manag.gen_opt_plots('res','test',1,1,0)
-    mplots.plot_show_export(plot_opciones, SIM_results)
+    mod = 0
+    if mod:
+        
+        N = 16
+        NM_opciones = data_manag.gen_sim_opciones('optimizar',1)
+        V_test = 0.9
+        ts_test = 0.9
+        h_test = np.linspace(32.5e3/35e3,1.1,N-1)
+        perfil_entrada = data_manag.gen_input_profile(N, V_test, ts_test, h_test)
+        
+        NM_results = sp.minimize(simulador_crucero, perfil_entrada['prof_eval'], args=(perfil_entrada['N'],NM_opciones),method='Nelder-Mead', options={'maxiter': 1e7}, tol=1e-1)
+        NM_results['N'] = N
+        NM_results['wind_sim'] = NM_opciones['wind_sim']
+    else:
+        ev_prof = data_manag.BN_import_export(0,{'ruta':"res",'filename':"NM_output_16WTrue"},0)
+        ev_opciones = data_manag.gen_sim_opciones('evaluar',1,pen=True, output = 'full')
+        SIM_results = data_manag.gen_res_SIM(*simulador_crucero(ev_prof.x, ev_prof.N, ev_opciones),ev_opciones['wind_sim'])
+        
+        plot_opciones = data_manag.gen_opt_plots('res','test',1,1,0)
+        mplots.plot_show_export(plot_opciones, SIM_results,extra_s = 1, extra_data = SIM_results['extras'])
     
     
     

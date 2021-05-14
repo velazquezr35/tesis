@@ -12,6 +12,7 @@ import numpy as np
 
 plt.rcParams.update({'font.size': 15})
 
+
 # class plot_opts():
 #     '''Clase genérica para opciones de ploteos. UPDATE al 060521 \n
 # 	Methods: labs_opts: Títulos y demás \n
@@ -118,7 +119,7 @@ def comparativeN_plot(N,consumo,tiempos, plot_opts):
 def plot_show_export(opt, res_data, **kwargs):
     '''Función principal para ploteo global y completo \n
     opts, data, **kwargs'''
-    scale_factor = {'x_um':'ft','x_sf':0.000189394, 'W_f_um':'lb'}
+    scale_factor = {'x_um':'mi','x_sf':0.000189394, 'W_f_um':'lb'}
     
     if 'scale_factor' in kwargs:
         scale_factor = kwargs.get('scale_factor')
@@ -130,7 +131,7 @@ def plot_show_export(opt, res_data, **kwargs):
 #Ploteo de h profile
     fig,ax = plt.subplots()
     ax.plot(res_data['x_prof']*scale_factor['x_sf'], res_data['h_prof'],marker='o', label = 'perfil optimizado')
-    ax.set_title("Perfil de vuelo crucero - x vs h: "+str(res_data['N']))
+    ax.set_title("Perfil de vuelo crucero - x vs h, N: "+str(res_data['N']))
     ax.set_xlabel("dist "+scale_factor['x_um'])
     ax.set_ylabel("h [ft]")
     ax.grid()
@@ -138,14 +139,14 @@ def plot_show_export(opt, res_data, **kwargs):
     fig.suptitle(r'$W_f$' + ': ' + str(np.round(res_data['W_f'],2)) + scale_factor['W_f_um'])
     if opt['save']:
         s_name = opt['ruta'] + "/" + opt['filecode'] + "_hplot"
-        plt.savefig(s_name)
+        plt.savefig(s_name,bbox_inches='tight')
     if opt['close']:
         plt.close()
 
 #Ploteo de Va profile
     fig,ax = plt.subplots()
     ax.plot(res_data['x_prof']*scale_factor['x_sf'], res_data['Va_prof'],marker='o', label = 'perfil optimizado')
-    ax.set_title("Perfil de vuelo crucero - x vs Va: "+str(res_data['N']))
+    ax.set_title("Perfil de vuelo crucero - x vs Va, N: "+str(res_data['N']))
     ax.set_xlabel("dist "+scale_factor['x_um'])
     ax.set_ylabel("Va [ft/s]")
     ax.grid()
@@ -153,7 +154,7 @@ def plot_show_export(opt, res_data, **kwargs):
     fig.suptitle(r'$W_f$' + ': ' + str(np.round(res_data['W_f'],2)) + scale_factor['W_f_um'])
     if opt['save']:
         s_name = opt['ruta'] + "/" + opt['filecode'] + "_Vaplot"
-        plt.savefig(s_name)
+        plt.savefig(s_name,bbox_inches='tight')
     if opt['close']:
         plt.close()
 
@@ -161,7 +162,7 @@ def plot_show_export(opt, res_data, **kwargs):
 #Ploteo de ts profile
     fig,ax = plt.subplots()
     ax.plot(res_data['x_prof']*scale_factor['x_sf'], res_data['ts_prof'],marker='o', label = 'perfil optimizado')
-    ax.set_title("Perfil de vuelo crucero - x vs ts: "+str(res_data['N']))
+    ax.set_title("Perfil de vuelo crucero - x vs ts, N: "+str(res_data['N']))
     ax.set_xlabel("dist "+scale_factor['x_um'])
     ax.set_ylabel("ts [adim]")
     ax.grid()
@@ -169,14 +170,14 @@ def plot_show_export(opt, res_data, **kwargs):
     fig.suptitle(r'$W_f$' + ': ' + str(np.round(res_data['W_f'],2)) + scale_factor['W_f_um'])
     if opt['save']:
         s_name = opt['ruta'] + "/" + opt['filecode'] + "_tsplot"
-        plt.savefig(s_name)
+        plt.savefig(s_name,bbox_inches='tight')
     if opt['close']:
         plt.close()
         
 #Ploteo de WSpeed profile
     fig,ax = plt.subplots()
     ax.plot(res_data['x_prof'][:-1]*scale_factor['x_sf'], res_data['Vw_prof'],marker='o', label = 'perfil optimizado')
-    ax.set_title("Perfil de vuelo crucero - x vs Vw: "+str(res_data['N']))
+    ax.set_title("Perfil de vuelo crucero - x vs Vw, N: "+str(res_data['N']))
     ax.set_xlabel("dist "+scale_factor['x_um'])
     ax.set_ylabel("WSpeed [ft/s]")
     ax.grid()
@@ -184,7 +185,7 @@ def plot_show_export(opt, res_data, **kwargs):
     fig.suptitle(r'$W_f$' + ': ' + str(np.round(res_data['W_f'],2)) + scale_factor['W_f_um'])
     if opt['save']:
         s_name = opt['ruta'] + "/" + opt['filecode'] + "_Vwplot"
-        plt.savefig(s_name)
+        plt.savefig(s_name,bbox_inches='tight')
     if opt['close']:
         plt.close()
         
@@ -192,7 +193,7 @@ def plot_show_export(opt, res_data, **kwargs):
 #Ploteo de WDir profile
     fig,ax = plt.subplots()
     ax.plot(res_data['x_prof'][:-1]*scale_factor['x_sf'], res_data['VD_prof'],marker='o', label = 'perfil optimizado')
-    ax.set_title("Perfil de vuelo crucero - x vs Va: "+str(res_data['N']))
+    ax.set_title("Perfil de vuelo crucero - x vs Va, N: "+str(res_data['N']))
     ax.set_xlabel("dist "+scale_factor['x_um'])
     ax.set_ylabel("Wind fir from N [deg]")
     ax.grid()
@@ -200,12 +201,67 @@ def plot_show_export(opt, res_data, **kwargs):
     fig.suptitle(r'$W_f$' + ': ' + str(np.round(res_data['W_f'],2)) + scale_factor['W_f_um'])
     if opt['save']:
         s_name = opt['ruta'] + "/" + opt['filecode'] + "_Vdplot"
-        plt.savefig(s_name)
+        plt.savefig(s_name,bbox_inches='tight')
     if opt['close']:
         plt.close()
     
-    #IN PROGRESS:
-            #PLOTEO DE DEMÁS PERFILES
+    if 'extra_s' in kwargs:
+        extra_s = kwargs.get('extra_s')
+    if extra_s:
+        extra_data = kwargs.get('extra_data')
+        
+#Ploteo de CL profile
+
+    fig,ax = plt.subplots()
+    ax.plot(res_data['x_prof']*scale_factor['x_sf'], extra_data['CL_prof'],marker='o', label = 'perfil optimizado')
+    ax.set_title("Perfil de vuelo crucero - x vs CL, N: "+str(res_data['N']))
+    ax.set_xlabel("dist "+scale_factor['x_um'])
+    ax.set_ylabel("CL")
+    ax.grid()
+    ax.legend(title='Wind status:' + str(res_data['wind_sim']))
+    fig.suptitle(r'$W_f$' + ': ' + str(np.round(res_data['W_f'],2)) + scale_factor['W_f_um'])
+    if opt['save']:
+        s_name = opt['ruta'] + "/" + opt['filecode'] + "_CLeplot"
+        plt.savefig(s_name,bbox_inches='tight')
+    if opt['close']:
+        plt.close()
+        
+#Ploteo de aceleración
+
+    fig,ax = plt.subplots()
+    ax.plot(res_data['x_prof'][:-1]*scale_factor['x_sf'], extra_data['acc_prof'],marker='o', label = 'perfil optimizado')
+    ax.set_title("Perfil de vuelo crucero - x vs a, N: "+str(res_data['N']))
+    ax.set_xlabel("dist "+scale_factor['x_um'])
+    ax.set_ylabel(r'a [$\frac{ft}{s^2}$]')
+    ax.grid()
+    ax.legend(title='Wind status:' + str(res_data['wind_sim']))
+    fig.suptitle(r'$W_f$' + ': ' + str(np.round(res_data['W_f'],2)) + scale_factor['W_f_um'])
+    if opt['save']:
+        s_name = opt['ruta'] + "/" + opt['filecode'] + "_acceplot"
+        plt.savefig(s_name,bbox_inches='tight')
+    if opt['close']:
+        plt.close()
+        
+#Ploteo de endurance
+
+    fig,ax = plt.subplots()
+    ax.plot(res_data['x_prof'][:-1]*scale_factor['x_sf'], extra_data['endurance'],marker='o', label = 'perfil optimizado')
+    ax.set_title("Perfil de vuelo crucero - x vs t = x/Va, N: "+str(res_data['N']))
+    ax.set_xlabel("dist "+scale_factor['x_um'])
+    ax.set_ylabel('t [s]')
+    ax2 = ax.twinx()
+    ax2.plot(res_data['x_prof'][:-1]*scale_factor['x_sf'], extra_data['endurance']/3600)
+    ax2.set_ylabel('t [horas]')
+    ax.grid()
+    ax.legend(title='Wind status:' + str(res_data['wind_sim']))
+    fig.suptitle(r'$W_f$' + ': ' + str(np.round(res_data['W_f'],2)) + scale_factor['W_f_um'])
+    if opt['save']:
+        s_name = opt['ruta'] + "/" + opt['filecode'] + "_endureplot"
+        plt.savefig(s_name, bbox_inches='tight')
+    if opt['close']:
+        plt.close()
+        
+        
     return('fin de ploteo')
 
 # def comp_plot(N,consumo, tiempo):

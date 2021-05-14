@@ -24,9 +24,10 @@ def LFC_archivos(ruta):
 #Listador de estaciones disponibles en la ruta, nombres código IGRAA
 def listar_estaciones(ruta):
     loc_stat_list = os.listdir(ruta) #listamos archivos disponibles en la ruta
-    loc_stat_list.remove('igra2-station-list.txt') #eliminamos el índice
+    if 'igra2-station-list.txt' in loc_stat_list:
+        loc_stat_list.remove('igra2-station-list.txt') #eliminamos el índice
     return(loc_stat_list) #devolvemos lo que nos interesa, los nombres
 
 
 if __name__ == "__main__":
-    print(listar_estaciones("16_04_data"))
+    print(listar_estaciones("station_data"))
