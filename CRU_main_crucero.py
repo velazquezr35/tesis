@@ -15,6 +15,7 @@ import CRU_data_manag as data_manag
 import META_mods_utiles as tesis_wind #Acomodar y poner otro
 import CRU_plot_module as mplots
 import CRU_wind_eval
+import CRU_nav_module as nav
 
 
 ###############################################################################################
@@ -66,8 +67,20 @@ def simulador_crucero(profile,N, otp):
     k = 1/(AR*e*np.pi) #Oswald
     
     #Definición vuelo
-    # dist = 1.32e7 #2.0592e7 #pies (Distancia original del caso de tesis)
-    dist = 2.0592e7 #[ft], 3900 [millas]
+    #USU > MACA
+    prog_LATs = [-54, 0.02589]
+    prog_LONs = [-68, -51.06]
+    
+    rev = False
+    if rev:
+        prog_LATs = np.flip(prog_LATs)
+        prog_LONs = np.flip(prog_LONs)
+    
+    prog_fw_azi, prog_bw_azi, prog_dists = nav.h_Di(prog_LATs, prog_LONs)
+
+    tot_dist = sum(prog_dists)*funcs.OTH_2_EN['mi_ft']
+    
+    #tot_dist = 1.32e7 #2.0592e7 #pies (Distancia original del caso de tesis)
 
     ###################################
     #Perfiles de variables de interés
@@ -79,7 +92,7 @@ def simulador_crucero(profile,N, otp):
     VwD_prof = np.zeros(M)
     
     #Perfiles generales
-    CL, CD, CD0 = np.zeros((3,N))
+    CL, CD, CD0 = np.zeros((3,M))
     rho, Temp = np.zeros((2,N))
     a, Mach = np.zeros((2,N))
     Thr_disp, ct, cth = np.zeros((3,N))
@@ -87,29 +100,28 @@ def simulador_crucero(profile,N, otp):
     P_disp, P_req, P_use = np.zeros((3,N))
     W = np.zeros(N)
     W[0] = W0
-    q_1, B, r_1 = np.zeros((3,N))
-    RC, d_t, d_fuel_dot, d_fuel = np.zeros((4,N))
+    q_1, B, r_1 = np.zeros((3,M))
+    RC, d_t, d_fuel_dot, d_fuel = np.zeros((4,M))
     d_rec_trepada, d_restante = np.zeros((2,M))
     Thr_trepada, Drg_trepada = np.zeros((2,M))
-    endurance_Va, endurance_Vt = np.zeros((2,M))
+    endurance_Va, endurance_tramo = np.zeros((2,M))
     wind_aporte = np.zeros(M)
     
-    x_prof = np.linspace(0,dist,N)
+    x_prof = np.linspace(0,tot_dist,N)
     
     d_h = np.diff(h_prof) #h steps
     d_x = np.diff(x_prof) #x steps
     
     LATs, LONGs = np.zeros((2,N))
-    
+
+    head = np.zeros(M) 
     acc = np.zeros(M)
     tray_gamma = np.zeros(M)
     
     for j in range(0,M): #Recorremos los M segmentos
+    
+        LATs[j], LONGs[j], head[j] = nav.nav_route(x_prof[j]/funcs.OTH_2_EN['mi_ft'],prog_dists,prog_fw_azi,prog_LATs, prog_LONs)
 
-        #LONGs, LATs = nav.module(etc) #IN PROGRESS
-        LONGs[j] = -54.81 + 54.81/3900 *x_prof[j]*0.000189394 #TEST EVALUAR INICIO; LUEGO LLEVAR A PUNTO MEDIO!
-        LATs[j] = -68.31 + 17.31/3900*x_prof[j]*0.000189394 #TEST EVALUAR INICIO; LUEGO LLEVAR A PUNTO MEDIO!
-                
         if (d_h[j] == 0):
                       
             #Vuelo Va - h cte
@@ -142,7 +154,7 @@ def simulador_crucero(profile,N, otp):
             
             #Evaluar vel viento local
 
-            Vw_prof[j], VwS_prof[j], VwD_prof[j] = CRU_wind_eval.wind_eval(wind_model, wind_modelWD, h_prof[j]/funcs.SI_2_EN['lon'], LATs[j], LONGs[j]) #Ya salida en ft/s
+            Vw_prof[j], VwS_prof[j], VwD_prof[j] = CRU_wind_eval.wind_eval(wind_model, wind_modelWD, h_prof[j]/funcs.SI_2_EN['lon'], LATs[j], LONGs[j], head[j], output_scale = funcs.SI_2_EN['lon']) #Ya salida en ft/s
             
             
             if otp['wind_sim']:
@@ -150,18 +162,18 @@ def simulador_crucero(profile,N, otp):
                 cons_no_wind = (np.tan(np.arctan(np.sqrt(r_1[j])*W[j])-d_x[j]*ct[j]*q_1[j]*S*CD0[j]*np.sqrt(r_1[j])/Va_prof[j]))/np.sqrt(r_1[j])
                 # print(cons_no_wind)
                 #Calculamos el tiempo (x_Vh / V) para la misma
-                endurance_Va = np.arctan(q_1[j]*S*np.sqrt(k*CD0[j])*(W[j]-cons_no_wind)/(np.power(q_1[j]*S,2)*CD0[j]+k*W[j]*cons_no_wind))/(ct[j]*np.sqrt(k*CD0[j])) #calculada por la dist. completa, a lo largo de la cual el viento afecta
+                endurance_Va[j] = np.arctan(q_1[j]*S*np.sqrt(k*CD0[j])*(W[j]-cons_no_wind)/(np.power(q_1[j]*S,2)*CD0[j]+k*W[j]*cons_no_wind))/(ct[j]*np.sqrt(k*CD0[j])) #calculada por la dist. completa, a lo largo de la cual el viento afecta
                 
-                wind_aporte[j] = endurance_Va * Vw_prof[j]
+                wind_aporte[j] = endurance_Va[j] * Vw_prof[j]
                 #Si consideramos efecto de viento, hay menor o mayor distancia a recorrer
-                dist_2r = d_x[j] + wind_aporte[j]
+                dist_2r = d_x[j] - wind_aporte[j] #Convención: Proyección headwind = negativa, por lo que debo restar
                 
             else: #si no, directamente la distancia del tramo
                 dist_2r = d_x[j]
             
             #Tiempo para dist_2r:
-            endurance_Vt[j] = dist_2r/Va_prof[j]
-            acc[j] = Va_prof[j]/endurance_Vt[j]
+            endurance_tramo[j] = dist_2r/Va_prof[j]
+            acc[j] = Va_prof[j]/endurance_tramo[j]
             
             #Calculamos el combustible final en ese caso
             W[j+1] = (np.tan(np.arctan(np.sqrt(r_1[j])*W[j])-dist_2r*ct[j]*q_1[j]*S*CD0[j]*np.sqrt(r_1[j])/Va_prof[j]))/np.sqrt(r_1[j])
@@ -176,7 +188,7 @@ def simulador_crucero(profile,N, otp):
             loc_h = h_prof[j]+d_h[j]*0.5
             
             #Evaluamos viento        
-            loc_Vw, loc_VwS, loc_VwD = CRU_wind_eval.wind_eval(wind_model, wind_modelWD, loc_h/funcs.SI_2_EN['lon'], LATs[j], LONGs[j]) #Ya salida en ft/s
+            loc_Vw, loc_VwS, loc_VwD = CRU_wind_eval.wind_eval(wind_model, wind_modelWD, loc_h/funcs.SI_2_EN['lon'], LATs[j], LONGs[j], head[j], output_scale = funcs.SI_2_EN['lon']) #Ya salida en ft/s
 
             #Calculamos info atm
             loc_rho, loc_Temp, loc_a = funcs.isa_ATM(loc_h/funcs.SI_2_EN['lon'],'EN_tesis')[:3]
@@ -185,6 +197,7 @@ def simulador_crucero(profile,N, otp):
             #Calculamos empuje motor con la info media
             loc_Thr_disp, loc_cth = funcs.turbofan(Va_prof[j],loc_h)
             loc_ct = loc_cth/3600
+            
             #Potencia disponible para la trepada
             loc_P_disp = loc_Thr_disp*Va_prof[j]
             
@@ -223,16 +236,15 @@ def simulador_crucero(profile,N, otp):
             
             if otp['wind_sim']: #Si consideramos efecto de viento
                 wind_aporte[j] = loc_Vw*d_t[j] #Velocidad viento x tiempo en trepar
-                d_restante[j] = d_x[j]-d_rec_trepada[j] + wind_aporte[j]
+                d_restante[j] = d_x[j]-d_rec_trepada[j] - wind_aporte[j] #Convención: Proyección headwind = negativa, por lo que debo restar
             else:
                 d_restante[j] = d_x[j]-d_rec_trepada[j]                
 
         
             #Repetimos análisis que resta (recto y nivelado) para nueva alt
-            
             #Evaluar vel viento local
 
-            Vw_prof[j], VwS_prof[j], VwD_prof[j] = CRU_wind_eval.wind_eval(wind_model, wind_modelWD, h_prof[j+1]/3.28, LATs[j], LONGs[j]) #Ya salida en ft/s
+            Vw_prof[j], VwS_prof[j], VwD_prof[j] = CRU_wind_eval.wind_eval(wind_model, wind_modelWD, h_prof[j+1]/funcs.SI_2_EN['lon'], LATs[j], LONGs[j], head[j], output_scale = funcs.SI_2_EN['lon']) #Ya salida en ft/s
                         
             #Calculamos info atm
             rho[j], Temp[j], a[j] = funcs.isa_ATM(h_prof[j+1]/funcs.SI_2_EN['lon'],'EN_tesis')[:3] #Usar alt post trepada
@@ -266,24 +278,25 @@ def simulador_crucero(profile,N, otp):
                 #Sacamos consumo para la dist. dx sin viento
                 cons_no_wind = (np.tan(np.arctan(np.sqrt(r_1[j])*W[j+1])-d_restante[j]*ct[j]*q_1[j]*S*CD0[j]*np.sqrt(r_1[j])/Va_prof[j]))/np.sqrt(r_1[j])
                 #Calculamos el tiempo (x_Vh / V) para la misma
-                endurance_Va = np.arctan(q_1[j]*S*np.sqrt(k*CD0[j])*(W[j+1]-cons_no_wind)/(np.power(q_1[j]*S,2)*CD0[j]+k*W[j+1]*cons_no_wind))/(ct[j]*np.sqrt(k*CD0[j])) #calculada por la dist. completa, a lo largo de la cual el viento afecta
+                endurance_Va[j] = np.arctan(q_1[j]*S*np.sqrt(k*CD0[j])*(W[j+1]-cons_no_wind)/(np.power(q_1[j]*S,2)*CD0[j]+k*W[j+1]*cons_no_wind))/(ct[j]*np.sqrt(k*CD0[j])) #calculada por la dist. completa, a lo largo de la cual el viento afecta
                 
-                wind_aporte[j] = endurance_Va * Vw_prof[j]
+                wind_aporte[j] = endurance_Va[j] * Vw_prof[j]
                 #Si consideramos efecto de viento, hay menor o mayor distancia a recorrer
-                dist_2r = d_restante[j] + wind_aporte[j]
+                dist_2r = d_restante[j] - wind_aporte[j] #Convención: Proyección headwind = negativa, por lo que debo restar
                 
             else: #si no, directamente la distancia del tramo que falta
                 dist_2r = d_restante[j]
-            
-            endurance_Vt[j] = (dist_2r+d_restante[j])/Va_prof[j]
-            acc[j] = Va_prof[j]/endurance_Vt[j]
+
+            endurance_tramo[j] = d_t[j] + dist_2r/Va_prof[j]
+            acc[j] = Va_prof[j]/endurance_tramo[j]
             
             #Calculamos el combustible final en ese caso
             W[j+1] = (np.tan(np.arctan(np.sqrt(r_1[j])*W[j+1])-dist_2r*ct[j]*q_1[j]*S*CD0[j]*np.sqrt(r_1[j])/Va_prof[j]))/np.sqrt(r_1[j])
     
 
+    LATs[M], LONGs[M] = nav.nav_route(x_prof[M]/funcs.OTH_2_EN['mi_ft'],prog_dists,prog_fw_azi,prog_LATs, prog_LONs)[:2]
     consumo_fuel = abs((W[0]-W[N-1]))
-    consumo_post_pen = penal.penalizacion(consumo_fuel, CL, P_disp, P_req, ts_prof, Drg_trepada, Thr_trepada,d_h,d_x-wind_aporte, d_rec_trepada-wind_aporte, d_t, Va_prof, otp['pen_flag'], 'normal')
+    consumo_post_pen = penal.penalizacion(consumo_fuel, CL, P_disp, P_req, ts_prof, Drg_trepada, Thr_trepada,d_h,d_x, d_rec_trepada, d_t, Va_prof, otp['pen_flag'], 'normal')
 
     #Built-in plot routine (sencilla)
     if otp['plot']:
@@ -351,32 +364,38 @@ def simulador_crucero(profile,N, otp):
         return(otp['output'], consumo_post_pen, h_prof, x_prof, Va_prof, ts_prof, Vw_prof, VwD_prof, N, 0)
     if otp['output'] =="full":
         print("In progress - Salida completa")
-        extras = {'CL_prof':CL, 'CD_prof':CD, 'endurance':endurance_Vt, 'acc_prof':acc, 'tray_gamma':tray_gamma}
+        nav.plot_ruta(LATs, LONGs, save=True, ruta='res', filecode = str(N), close = True)
+        extras = {'CL_prof':CL, 'CD_prof':CD, 'endurance':endurance_tramo, 'acc_prof':acc, 'tray_gamma':tray_gamma}
         return(otp['output'], consumo_post_pen, h_prof, x_prof, Va_prof, ts_prof, Vw_prof, VwD_prof, N, extras)
         
         
 
 if __name__ == "__main__":
-    mod = 0
-    if mod:
-        
-        N = 16
-        NM_opciones = data_manag.gen_sim_opciones('optimizar',1)
+    arr_N = [16]
+    mod = False
+    for a in arr_N:
+        N = a
         V_test = 0.9
         ts_test = 0.9
         h_test = np.linspace(32.5e3/35e3,1.1,N-1)
         perfil_entrada = data_manag.gen_input_profile(N, V_test, ts_test, h_test)
         
-        NM_results = sp.minimize(simulador_crucero, perfil_entrada['prof_eval'], args=(perfil_entrada['N'],NM_opciones),method='Nelder-Mead', options={'maxiter': 1e7}, tol=1e-1)
-        NM_results['N'] = N
-        NM_results['wind_sim'] = NM_opciones['wind_sim']
-    else:
-        ev_prof = data_manag.BN_import_export(0,{'ruta':"res",'filename':"NM_output_16WTrue"},0)
-        ev_opciones = data_manag.gen_sim_opciones('evaluar',1,pen=True, output = 'full')
-        SIM_results = data_manag.gen_res_SIM(*simulador_crucero(ev_prof.x, ev_prof.N, ev_opciones),ev_opciones['wind_sim'])
-        
-        plot_opciones = data_manag.gen_opt_plots('res','test',1,1,0)
-        mplots.plot_show_export(plot_opciones, SIM_results,extra_s = 1, extra_data = SIM_results['extras'])
+        if mod:
+            NM_opciones = data_manag.gen_sim_opciones('optimizar',1)
+            NM_results = sp.minimize(simulador_crucero, perfil_entrada['prof_eval'], args=(perfil_entrada['N'],NM_opciones),method='Nelder-Mead', options={'maxiter': 1e7}, tol=1e-1)
+            NM_results['N'] = N
+            NM_results['wind_sim'] = NM_opciones['wind_sim']
+            
+            data_manag.BN_import_export(1,{'ruta':"res",'filename':"NM_output_"+str(N)+"_WTrue"},NM_results)
+
+        else:
+            NM_results = data_manag.BN_import_export(0,{'ruta':"res",'filename':"NM_output_"+str(N)+"_WTrue"},0)  
+            ev_opciones = data_manag.gen_sim_opciones('evaluar',1,pen=True,output = 'full')
+            SIM_results = data_manag.gen_res_SIM(*simulador_crucero(NM_results.x, NM_results.N, ev_opciones),ev_opciones['wind_sim'])
+            
+            data_manag.BN_import_export(1,{'ruta':"res",'filename':"RES_output_"+str(N)+"_WTrue"},SIM_results)
+            plot_opciones = data_manag.gen_opt_plots('res','revN'+str(SIM_results['N'])+'Ws'+str(SIM_results['wind_sim']),1,1,1)
+            mplots.plot_show_export(plot_opciones, SIM_results,extra_s = 1, extra_data = SIM_results['extras'])
     
     
     

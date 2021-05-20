@@ -12,108 +12,93 @@ import numpy as np
 
 plt.rcParams.update({'font.size': 15})
 
-
-# class plot_opts():
-#     '''Clase genérica para opciones de ploteos. UPDATE al 060521 \n
-# 	Methods: labs_opts: Títulos y demás \n
-# 		    ie_opts: Opciones de guardado y muestra'''
-# 	def labs_opts(self, title, suptitle, xlabel, ylabel, leg_title):
-# 		self.title = title
-# 		self.suptitle = suptitle
-# 		self.xlabel = xlabel
-# 		self.ylabel = ylabel
-# 		self.leg_title = leg_title
-# 	def ie_opts(self,save,close, filecode, folder)
-# 		self.save = bool(save)
-# 		self.close = bool(close)
-# 		self.filecode = filecode
-# 		self.folder = folder
-# 		self.status = True
-# 	def flags(self,wind):
-# 		self.wind = bool(wind)
 ##############################################
-def comparativeN_plot(N,consumo,tiempos, plot_opts):
-    ''' IN PROGRESS '''   
-    if wind_ind_plot_opts:
 
-        pass
+def comparativeN_plot(N,y, opt, **kwargs):
+    ''' IN PROGRESS \n
+    plot_opts: Usar dict genérico de info \n
+    kwargs: tipo = Wf '''
+    if kwargs.get('tipo') == 'Wf':
+        rel_incr = y[1:]/y[:-1] - 1
+        rel_N = np.diff(N)
+        fig, ax = plt.subplots()
+        ax.plot(rel_N, rel_incr, marker = 'x', label = 'Wind: ?')# + str(res_data['wind_sim']))
+        ax.grid()
+        ax.set_xlabel(r'$\Delta$ N')
+        ax.set_ylabel(r'$\Delta W_f \%$')
+        if opt['save']:
+            s_name = opt['ruta'] + "/" + opt['filecode'] + "_incrWfvsNplot"
+            plt.savefig(s_name, bbox_inches='tight')
+        if opt['close']:
+            plt.close()   
+        fig, ax = plt.subplots()
+        ax.plot(N,y, marker = 'o', label='Wind: ?')
+        ax.grid()
+        ax.set_xlabel('N')
+        ax.set_ylabel('Wf [lb]')
+        if opt['save']:
+            s_name = opt['ruta'] + "/" + opt['filecode'] + "_WfvsNplot"
+            plt.savefig(s_name, bbox_inches='tight')
+        if opt['close']:
+            plt.close()
     
-    rel_incr = consumo[1:]/consumo[:-1] - 1
-    rel_N = np.diff(N)
-    
-    fig, ax = plt.subplots()
-    ax.plot(rel_N, rel_incr, marker = 'x', label = ' OPT c/VIENTO')
-    ax.set_xlabel(r'$\Delta$ N')
-    ax.set_ylabel(r'$\Delta W_f \%$')
-    ax.grid()
-    ax.legend()
-    fig.suptitle('Comparativa incremento de consumo vs incremento de N')
-    if plot_opts.save:
-        s_name = plot_opts.folder + "/" + plot_opts.filecode + "_incrplot"
-        plt.savefig(s_name)
-    if plot_opts.close:
-        plt.close()
-    
-    fig, ax = plt.subplots()
-    ax.plot(N,consumo, marker='o', label = 'OPT c/VIENTO')
-    ax.set_xlabel('N steps')
-    ax.set_ylabel('W_f [lb]')
-    ax.set_xscale('log')
-    ax.grid()
-    ax.legend()
-    fig.suptitle('Comparativa consumo vs N')
-	
-    if plot_opts.save:
-        s_name = plot_opts.folder + "/" + plot_opts.filecode + "_WvNplot"
-        plt.savefig(s_name)
-    if plot_opts.close:
-        plt.close()    
+    elif kwargs.get('tipo') == 'CPUt':
+        ax.plot(N, y, marker = 'o', label = 'tiempo de cálculo')
+        ax.set_xlabel('N')
+        ax.set_ylabel('t [s]')    
+        ax2 = ax.twinx()
+        ax2.plot(N, y/3600)
+        ax2.set_ylabel('t [horas]')
+        ax.grid()
+        ax.legend()
+        fig.suptitle(r'$W_f$')
+        
+        if opt['save']:
+            s_name = opt['ruta'] + "/" + opt['filecode'] + "_CPUtplot"
+            plt.savefig(s_name, bbox_inches='tight')
+        if opt['close']:
+            plt.close()
 
-    fig, ax = plt.subplots()
-    ax.plot(N, tiempos, marker = 'o', label = 'OPT c/VIENTO')
-    ax.set_xlabel('N steps')
-    ax.set_ylabel('t [s]')
-    ax.grid()
-    ax.legend()
-    ax2 = ax.twinx()
-    ax2.plot(N, tiempos/3600)
-    ax2.set_ylabel('t [horas]')
-    fig.suptitle('Comparativa tiempo vs N')
-    if plot_opts.save:
-        s_name = plot_opts.folder + "/" + plot_opts.filecode + "_tvNplot"
-        plt.savefig(s_name)
-    if plot_opts.close:
-           plt.close()
 
 ################################################
 
-# def travel_plot(y_prof, loc_y_prof, x_prof, xtrep_prof,plot_opts,**kwargs):
-#     x_scale = 1
-# # 	x_scala = 1
-# #     if 'UMx' in kwargs:
-# #         x_units = kwargs.get('UMx')
-# #         x_units == 'ft':
-# # 		x_scala = 0.000189394
-#     # full_x = np.array([x_prof[0])
-#     # full_y = np.array([y_prof[0])
-#     for i in range(len(xtrep_prof)):
-#         full_x = np.append(xtrep_prof[i]+x_prof[i])
-#         full_x = np.append(x_prof[i+1])
-#         full_y = np.append(loc_y_prof[i])
-#         full_y = np.append(y_prof[i+1])
-#     fig, ax = plt.subplots()
-#     ax.plot(full_x*x_scala, full_y, marker = 'x', label = plot_opts.label)
-#     ax.set_xlabel(plot_opts.xlabel)
-#     ax.set_ylabel(plot_opts.ylabel)
-#     ax.set_title(plot_opts.title)
-#     fig.suptitle(plot_opts.suptitle)
-#     ax.grid()
-#     ax.legend()
-#     if plot_opts.save:
-#         s_name = plot_opts.folder + "/" + plot_opts.filecode + "_hplot"
-#         plt.savefig(s_name)
-#     if plot_opts.close:
-#         plt.close()
+def travel_plot(y_prof, y_trep_prof, x_prof, x_trep_prof, log_dH, **kwargs):
+    '''y prof: y en steps normales \n
+        y trep prof: y en trepadas
+        kwargs: tipo: h_plot for plot escalón'''
+    #Tratamiento y, no implica en orden creciente
+    y_comb = np.copy(y_prof)
+    count = 1
+    for i in range(len(y_trep_prof)):
+        y_comb = np.insert(y_comb, i+count, y_trep_prof[i])
+        count = count +1
+    
+    #Tratamiento x, implica orden creciente
+    x_comb = np.append(x_prof, x_trep_prof + x_prof[:-1])
+    x_comb = np.sort(x_comb)
+    
+    #Adecuamos si corresponde
+    for i in range(len(log_dH)):
+        if log_dH[i]:
+            print(i)
+            y_comb[2*i+1] = y_comb[2*i]
+    if kwargs.get('tipo') == 'h_plot':
+        fig, ax = plt.subplots()
+        ax.plot(x_comb, y_comb)
+        ax.grid()
+        for loc_x in x_prof:
+            ax.axvline(loc_x, linestyle = 'dashed', color = 'r', linewidth = 0.8)
+        return(x_comb, y_comb)
+    else:
+        fig, ax = plt.subplots()
+        for i in range(len(y_comb)-1):
+            ax.plot([x_comb[i],x_comb[i+1]], [y_comb[i],y_comb[i]], color = 'b')
+            ax.plot([x_comb[i+1],x_comb[i+1]],[y_comb[i],y_comb[i+1]], color = 'b', linestyle = 'dashed', linewidth = 0.8)
+        ax.grid()
+              
+        for loc_x in x_prof:
+            ax.axvline(loc_x, linestyle = 'dashed', color = 'r', linewidth = 0.8)
+        return(x_comb, y_comb)
 
 #######################################################
 def plot_show_export(opt, res_data, **kwargs):
@@ -213,7 +198,7 @@ def plot_show_export(opt, res_data, **kwargs):
 #Ploteo de CL profile
 
     fig,ax = plt.subplots()
-    ax.plot(res_data['x_prof']*scale_factor['x_sf'], extra_data['CL_prof'],marker='o', label = 'perfil optimizado')
+    ax.plot(res_data['x_prof'][:-1]*scale_factor['x_sf'], extra_data['CL_prof'],marker='o', label = 'perfil optimizado')
     ax.set_title("Perfil de vuelo crucero - x vs CL, N: "+str(res_data['N']))
     ax.set_xlabel("dist "+scale_factor['x_um'])
     ax.set_ylabel("CL")
@@ -263,35 +248,3 @@ def plot_show_export(opt, res_data, **kwargs):
         
         
     return('fin de ploteo')
-
-# def comp_plot(N,consumo, tiempo):
-#     rel_incr = consumo[1:]/consumo[:-1] - 1
-#     rel_N = np.diff(N)
-    
-#     fig, ax = plt.subplots()
-#     ax.plot(rel_N, rel_incr, marker = 'x', label = ' OPT c/VIENTO')
-#     ax.set_xlabel(r'$\Delta$ N')
-#     ax.set_ylabel(r'$\Delta W_f \%$')
-#     ax.grid()
-#     ax.legend()
-#     fig.suptitle('Comparativa incremento de consumo vs incremento de N')
-    
-#     fig, ax = plt.subplots()
-#     ax.plot(N,consumo, marker='o', label = 'OPT c/VIENTO')
-#     ax.set_xlabel('N steps')
-#     ax.set_ylabel('W_f [lb]')
-#     ax.set_xscale('log')
-#     ax.grid()
-#     ax.legend()
-#     fig.suptitle('Comparativa consumo vs N')
-    
-#     fig, ax = plt.subplots()
-#     ax.plot(N, tiempos, marker = 'o', label = 'OPT c/VIENTO')
-#     ax.set_xlabel('N steps')
-#     ax.set_ylabel('t [s]')
-#     ax.grid()
-#     ax.legend()
-#     ax2 = ax.twinx()
-#     ax2.plot(N, tiempos/3600)
-#     ax2.set_ylabel('t [horas]')
-#     fig.suptitle('Comparativa tiempo vs N')

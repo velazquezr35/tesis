@@ -6,7 +6,6 @@ UPDATE 0605 NEW F()
 @author: Ramon Velazquez
 TESIS OPTIMIZACIÓN DE VUELO CRUCERO
 """
-import cartopy.geodesic as c
 import numpy as np
 import cartopy.feature as cfeature
 import cartopy
@@ -23,8 +22,7 @@ def h_Di(LAT, LON):
     back_azi = np.array([])
     distance = np.array([])
     for i in range(1,len(LAT)):
-        loc_fazi, loc_bazi,loc_dist = geodesic.inv(LON[i-1],LAT[i-1],LON[i],LAT[i])
-        # loc_plane_azi = np.arctan(())
+        loc_fazi, loc_bazi,loc_dist = geodesic.inv(LON[i-1],LAT[i-1],LON[i],LAT[i], radians = False)
         fwd_azi = np.append(fwd_azi,loc_fazi)
         back_azi = np.append(back_azi,loc_bazi)
         distance = np.append(distance,loc_dist*0.000621371)
@@ -34,7 +32,9 @@ def nav_route(loc_dR, way_D, way_H, LATs, LONs):
     '''Función que devuelva la LAT LON HEA local según % ruta realizada, vs plan \n
     way_D = Array con distancias punto a punto (o marks) de la ruta
     way_H = Array con headings punto a punto de la ruta
-    loc_dR = Posición actual (en distancia) del avión respecto al recorrido total de la ruta'''
+    loc_dR [MI] = Posición actual (en distancia) del avión respecto al recorrido total de la ruta \n
+    
+    OUTPUT: act_LAT, act_LON, way_H[act_pos] '''
 
 #>>CHEQUEAR QUE dR SEA EL ACUMULADO
     su_D = np.append([0],np.copy(way_D))
@@ -48,7 +48,7 @@ def nav_route(loc_dR, way_D, way_H, LATs, LONs):
     act_LON, act_LAT, act_bw_azi = geodesic.fwd(LONs[act_pos],LATs[act_pos],way_H[act_pos],rel_dist/0.000621371, radians = False)    
     return(act_LAT, act_LON, way_H[act_pos])
 
-def plot_ruta(LATs, LONGs, **kwargs):
+def plot_ruta(LONGs, LATs, **kwargs):
     '''Función para ploteo de rutas \n
     Inputs: LATs, array con latitudes formato . \n
     LONGs, array con longitudes formato . \n
@@ -80,8 +80,8 @@ def plot_ruta(LATs, LONGs, **kwargs):
         edgecolor='gray', facecolor='none'))
 
     if "extra_lL" in kwargs:
-        extra_LATs = kwargs.get("extra_lL")[0]
-        extra_LONGs = kwargs.get("extra_lL")[1]
+        extra_LATs = kwargs.get("extra_lL")[1]
+        extra_LONGs = kwargs.get("extra_lL")[0]
         
         ax.plot(extra_LATs, extra_LONGs, 'go', label = 'extra')
         
@@ -91,22 +91,27 @@ def plot_ruta(LATs, LONGs, **kwargs):
     ax.legend()
     ax.set_title(data_ploteo['figtitle'])
     plt.show()
+    if "save" in kwargs:
+        if kwargs.get('save'):
+            s_name = kwargs.get('ruta') + "/"+ kwargs.get('filecode')+ "_navplot"
+            plt.savefig(s_name, bbox_inches='tight')
 
-
+    if "close" in kwargs:
+        if kwargs.get("close"):
+            plt.close()
 
 if __name__ == "__main__":
     
     print("Validación de nuevas funciones de navegación")
     print("Simulación de ruta USU - EZE - MACA - SANTIAGO")
     
-    lats = [-54.8078,-34.81,0.02589,-33.48359100356928]
-    longs = [-68.3021,-58.54,-51.06,-70.64]
+    lats = [-54.8078,0.02589]
+    longs = [-68.3021,-51.06]
 
     print("Latitudes y longitudes ruta")
     print(lats, longs)
     
     fw_azi, bw_azi, dists = h_Di(lats,longs)
-    a,b,c = nav_route(sum(dists)-2000, dists,fw_azi,lats,longs)
-    act_lL = [[b],[a]]
-    plot_ruta(longs,lats, extra_lL = act_lL)
-    print("Latitud y longitud final", a, b)
+    
+    print(h_Di(lats,longs))
+    print(h_Di(np.flip(lats), np.flip(longs)))

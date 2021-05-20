@@ -14,6 +14,7 @@ SI_air = {'R': 287, 'g':9.81, 'gamma': 1.4}
 #Conversión de unidades // Info aire
 SI_2_EN = {'R_air': 5.979094077, 'area': 10.7639, 'lon':3.28084, 'temp': 1.8, 'den':0.0019577143, 'pres':0.020885434273039, 'spd':3.28084, 'mass':2.20462}
 
+OTH_2_EN = {'mi_ft':5280}
 
 class BO_767300():
     '''All units in SI'''

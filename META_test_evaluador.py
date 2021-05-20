@@ -18,8 +18,7 @@ main_ruta = "station_data"
 
 
 def generar_3DMETA(mode):
-    ''' mode dir para dirección local \n
-        mode speed para magnitud local '''
+    '''mode 1 para WD, 0 para WS'''
     
     if mode == 'speed':
         print("Generación META para módulo de velocidad")
@@ -31,9 +30,9 @@ def generar_3DMETA(mode):
         return("SELECCIONAR speed OR dir")
     
     #parámetros
-    cov_scale = 0.5
+    cov_scale = 0.2
     #cantidad de lineas per file
-    lineas = int(2e3/65)
+    lineas = int(6e3/65)
     
     #archivos
     file = OS.listar_estaciones(main_ruta)
@@ -108,7 +107,8 @@ def lat_lon_disps(a):
 
 if __name__ == "__main__":
     #Generamos meta del caso para WD
-    WD_model, WD_tiempo = generar_3DMETA('dir')
+    model, tiempo = generar_3DMETA('speed')
+    mods.exp_imp_meta(1,model,'wind_models','cov02_full_BR_AR')
 
 
 
