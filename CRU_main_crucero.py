@@ -32,7 +32,7 @@ wind_model = tesis_wind.cargar('wind_models','full_BR_AR_WS')
 wind_modelWD = tesis_wind.cargar('wind_models','full_BR_AR_WD')
 
 #Datos atmosféricos y/o del avión globales en sistema EN_tesis
-miavion = funcs.plane('A320','V2500-A1')
+plane = funcs.BO_767300()
 
 ###############################################################################################
 
@@ -40,7 +40,7 @@ miavion = funcs.plane('A320','V2500-A1')
 
 ###############################################################################################
 
-def simulador_crucero(profile, N, otp):
+def simulador_crucero(profile,N, otp):
     '''Función principal que calcula el consumo y perfiles de variables para vuelo crucero propuesto \n
         inputs: \n
             - N: número de segmentos a dividir el tramo total \n
@@ -49,7 +49,7 @@ def simulador_crucero(profile, N, otp):
             
             '''
     #Factores de escala y dim
-    adim_prof = {'Va':700, 'h':32e3, 'ts':1, 'info':'Valores adim. del perfil input en sistema EN_tesis'}
+    adim_prof = {'Va':800, 'h':32e3, 'ts':1, 'info':'Valores adim. del perfil input en sistema EN_tesis'}
     
     #Definición de perfiles
     M = N-1
@@ -60,13 +60,16 @@ def simulador_crucero(profile, N, otp):
     h_prof[0] = 32000
 
     #Datos locales del avión
-    S = miavion.general_props['wing']['area']*funcs.OPEN_2_EN['area']
-    W0 = miavion.general_props['limits']['MTOW']*funcs.OPEN_2_EN['mass']
-    k = miavion.drag_props.polar['clean']['k']
+    W0 = plane.data['W0']*funcs.SI_2_EN['mass']
+    S = plane.data['S']*funcs.SI_2_EN['area']
+    AR = plane.data['AR']
+    e = plane.data['e']
+    k = 1/(AR*e*np.pi) #Oswald
+    
     #Definición vuelo
     #USU > EZE
-    prog_LATs = [-54, -24.78]
-    prog_LONs = [-68, -65.411]
+    prog_LATs = [-54, -34.8553]
+    prog_LONs = [-68, -58.528]
     
     rev = False
     if rev:
@@ -76,7 +79,7 @@ def simulador_crucero(profile, N, otp):
     prog_fw_azi, prog_bw_azi, prog_dists = nav.h_Di(prog_LATs, prog_LONs)
 
     tot_dist = sum(prog_dists)*funcs.OTH_2_EN['mi_ft']
-    
+
     ###################################
     #Perfiles de variables de interés
     ###################################
@@ -106,6 +109,7 @@ def simulador_crucero(profile, N, otp):
     
     d_h = np.diff(h_prof) #h steps
     d_x = np.diff(x_prof) #x steps
+    
     LATs, LONGs = np.zeros((2,N))
 
     head = np.zeros(M) 
@@ -125,22 +129,22 @@ def simulador_crucero(profile, N, otp):
             Mach[j] = Va_prof[j]/a[j]
             
             #Calculamos empuje motor con la info atm
-            Thr_disp[j] = miavion._engine_T_(Va_prof[j]/funcs.OPEN_2_EN['speed'], h_prof[j], T_factor = funcs.OPEN_2_EN['force'])
+            Thr_disp[j], cth[j] = funcs.turbofan(Va_prof[j],h_prof[j])
+            ct[j] = cth[j]/3600
+            
+            #Potencia disponible
             P_disp[j] = Thr_disp[j]*Va_prof[j]
             
             #Coeficientes y fuerzas aerodinámicas
             CL[j] = 2*W[j]/(rho[j]*S*np.power(Va_prof[j],2))
-            CD0[j] = miavion._CD0_WDrg(Mach[j])
+            CD0[j] = plane.CD0_model(Mach[j]) #Con polar
             CD[j] = CD0[j] + k*np.power(CL[j],2)
+            
             Drg[j] = 0.5*rho[j]*np.power(Va_prof[j],2)*S*CD[j]
-            
-            #Por condicion T=D
-            ts_prof[j] = Drg[j]/Thr_disp[j]
-            
-            ct[j] = miavion._fflow_model_(Thr_disp[j]*ts_prof[j]/funcs.OPEN_2_EN['force'], h_prof[j], ct_factor = funcs.OPEN_2_EN['mass'])
-            ct[j] = ct[j]/Drg[j] #OJO: CT LB / S PERO EQS CONSIDERAN LB / LBF S. Además aplico D = T
+    
             #Potencia requerida
             P_req[j] = Drg[j]*Va_prof[j]
+        
             
             #Calculamos consumo en el tramo nivelado
             q_1[j] = 0.5*rho[j]*Va_prof[j]**2
@@ -148,10 +152,10 @@ def simulador_crucero(profile, N, otp):
             
             #Evaluar vel viento local
 
+            Vw_prof[j], VwS_prof[j], VwD_prof[j] = CRU_wind_eval.wind_eval(wind_model, wind_modelWD, h_prof[j]/funcs.SI_2_EN['lon'], LATs[j], LONGs[j], head[j], output_scale = funcs.SI_2_EN['lon']) #Ya salida en ft/s
             
             
             if otp['wind_sim']:
-                Vw_prof[j], VwS_prof[j], VwD_prof[j] = CRU_wind_eval.wind_eval(wind_model, wind_modelWD, h_prof[j]/funcs.SI_2_EN['lon'], LATs[j], LONGs[j], head[j], output_scale = funcs.SI_2_EN['lon']) #Ya salida en ft/s
                 #Sacamos consumo para la dist. dx sin viento
                 cons_no_wind = (np.tan(np.arctan(np.sqrt(r_1[j])*W[j])-d_x[j]*ct[j]*q_1[j]*S*CD0[j]*np.sqrt(r_1[j])/Va_prof[j]))/np.sqrt(r_1[j])
                 # print(cons_no_wind)
@@ -181,25 +185,28 @@ def simulador_crucero(profile, N, otp):
             #Tomamos valores promedio
             loc_h = h_prof[j]+d_h[j]*0.5
             
-            #Evaluamos viento
-            if otp['wind_sim']:
-                loc_Vw, loc_VwS, loc_VwD = CRU_wind_eval.wind_eval(wind_model, wind_modelWD, loc_h/funcs.SI_2_EN['lon'], LATs[j], LONGs[j], head[j], output_scale = funcs.SI_2_EN['lon']) #Ya salida en ft/s
+            #Evaluamos viento        
+            loc_Vw, loc_VwS, loc_VwD = CRU_wind_eval.wind_eval(wind_model, wind_modelWD, loc_h/funcs.SI_2_EN['lon'], LATs[j], LONGs[j], head[j], output_scale = funcs.SI_2_EN['lon']) #Ya salida en ft/s
 
             #Calculamos info atm
             loc_rho, loc_Temp, loc_a = funcs.isa_ATM(loc_h/funcs.SI_2_EN['lon'],'EN_tesis')[:3]
             loc_Mach = Va_prof[j]/loc_a
             
             #Calculamos empuje motor con la info media
-            loc_Thr_disp = miavion._engine_T_(Va_prof[j]/funcs.OPEN_2_EN['speed'], loc_h, T_factor = funcs.OPEN_2_EN['force'])
+            loc_Thr_disp, loc_cth = funcs.turbofan(Va_prof[j],loc_h)
+            loc_ct = loc_cth/3600
+            
+            #Potencia disponible para la trepada
             loc_P_disp = loc_Thr_disp*Va_prof[j]
             
             #Coeficientes y fuerzas aerodinámicas
             loc_CL = 2*W[j]/(loc_rho*S*np.power(Va_prof[j],2))
-            loc_CD0 = miavion._CD0_WDrg(loc_Mach)
+            loc_CD0 = plane.CD0_model(loc_Mach) #Con polar
             loc_CD = loc_CD0 + k*np.power(loc_CL,2)
+            
             loc_Drg = 0.5*loc_rho*np.power(Va_prof[j],2)*S*loc_CD
             
-            loc_E = CD0[j]/loc_CL + k*loc_CL
+            loc_E = loc_CD0/loc_CL + k*loc_CL
             #Determinamos si trepa o desciende
             if d_h[j]>0:
                 loc_Thr = ts_prof[j]*loc_Thr_disp #Empuje aplicado % del disp
@@ -210,14 +217,15 @@ def simulador_crucero(profile, N, otp):
             
             Thr_trepada[j] = loc_Thr
             Drg_trepada[j] = loc_Drg
+            # print(Thr_trepada-Drg_trepada)
             
             loc_Pot = Thr_trepada[j] * Va_prof[j]
             loc_Pot_req = loc_Drg*Va_prof[j]
             
-            loc_ct = miavion._fflow_model_(loc_Thr/funcs.OPEN_2_EN['force'], loc_h, ct_factor = funcs.OPEN_2_EN['mass'])
             RC[j] = abs((loc_Pot-loc_Pot_req)/W[j]) #Rate of C / D
+            
             d_t[j] = abs(d_h[j]/RC[j]) #Tiempo que tarda
-            d_fuel_dot[j] = loc_ct #OJO, YA EN LB / S. No multiplicar por el THR.
+            d_fuel_dot[j] = loc_ct*loc_Thr
             d_fuel[j] = d_fuel_dot[j]*d_t[j] #Consumo en trepada
             W[j+1] = W[j]-d_fuel[j] #Restamos para el próximo peso
             
@@ -233,34 +241,32 @@ def simulador_crucero(profile, N, otp):
         
             #Repetimos análisis que resta (recto y nivelado) para nueva alt
             #Evaluar vel viento local
-            if otp['wind_sim']:
-                Vw_prof[j], VwS_prof[j], VwD_prof[j] = CRU_wind_eval.wind_eval(wind_model, wind_modelWD, h_prof[j+1]/funcs.SI_2_EN['lon'], LATs[j], LONGs[j], head[j], output_scale = funcs.SI_2_EN['lon']) #Ya salida en ft/s
+
+            Vw_prof[j], VwS_prof[j], VwD_prof[j] = CRU_wind_eval.wind_eval(wind_model, wind_modelWD, h_prof[j+1]/funcs.SI_2_EN['lon'], LATs[j], LONGs[j], head[j], output_scale = funcs.SI_2_EN['lon']) #Ya salida en ft/s
                         
             #Calculamos info atm
             rho[j], Temp[j], a[j] = funcs.isa_ATM(h_prof[j+1]/funcs.SI_2_EN['lon'],'EN_tesis')[:3] #Usar alt post trepada
             Mach[j] = Va_prof[j]/a[j]
             
             #Calculamos empuje motor con la info atm
-            Thr_disp[j] = miavion._engine_T_(Va_prof[j]/funcs.OPEN_2_EN['speed'], h_prof[j], T_factor = funcs.OPEN_2_EN['force'])
+            Thr_disp[j], cth[j] = funcs.turbofan(Va_prof[j],h_prof[j+1])
+            ct[j] = cth[j]/3600
+            
+            #Potencia disponible
             P_disp[j] = Thr_disp[j]*Va_prof[j]
-
+            Thr[j] = Drg[j] #post trepada
+            P_use[j] = Thr[j]*Va_prof[j] #Potencia utilizada
             
             #Coeficientes y fuerzas aerodinámicas
             CL[j] = 2*W[j+1]/(rho[j]*S*np.power(Va_prof[j],2))
-            CD0[j] = miavion._CD0_WDrg(Mach[j])
+            CD0[j] = plane.CD0_model(Mach[j]) #Con polar
             CD[j] = CD0[j] + k*np.power(CL[j],2)
             
             Drg[j] = 0.5*rho[j]*np.power(Va_prof[j],2)*S*CD[j]
-            
-            Thr[j] = Drg[j] #post trepada
-            P_use[j] = Thr[j]*Va_prof[j] #Potencia utilizada
-            #Por condicion T=D
-            ratio_ts = Drg[j]/Thr_disp[j]
-            ct[j] = miavion._fflow_model_(Thr_disp[j]*ratio_ts/funcs.OPEN_2_EN['force'], h_prof[j+1], ct_factor = funcs.OPEN_2_EN['mass'])
-            ct[j] = ct[j]/Drg[j] #OJO: CT LB / S PERO EQS CONSIDERAN LB / LBF S. Además aplico D = T
-           
+    
             #Potencia requerida
             P_req[j] = Drg[j]*Va_prof[j]
+            
             #Calculamos consumo en el tramo nivelado
             q_1[j] = 0.5*rho[j]*Va_prof[j]**2
             r_1[j] = k/(np.power(q_1[j]*S,2)*CD0[j])
@@ -288,49 +294,48 @@ def simulador_crucero(profile, N, otp):
 
     LATs[M], LONGs[M] = nav.nav_route(x_prof[M]/funcs.OTH_2_EN['mi_ft'],prog_dists,prog_fw_azi,prog_LATs, prog_LONs)[:2]
     consumo_fuel = abs((W[0]-W[N-1]))
-    consumo_post_pen = penal.penalizacion(consumo_fuel, h_prof, CL, P_disp, P_req, ts_prof, Drg_trepada, Thr_trepada,d_h,d_x, d_rec_trepada, d_t, Va_prof, otp['pen_flag'], 'normal')
+    consumo_post_pen = penal.penalizacion(consumo_fuel, CL, P_disp, P_req, ts_prof, Drg_trepada, Thr_trepada,d_h,d_x, d_rec_trepada, d_t, Va_prof, otp['pen_flag'], 'normal')
 
+
+        
     if otp['output'] == "only":
         return(consumo_post_pen)
     elif otp['output'] == "normal":
         return(otp['output'], consumo_post_pen, h_prof, x_prof, Va_prof, ts_prof, Vw_prof, VwD_prof, N, 0)
     if otp['output'] =="full":
         print("In progress - Salida completa")
-        print(Thr)
-        print(Drg)
-        print(Thr_disp*ts_prof)
         nav.plot_ruta(LATs, LONGs, save=True, ruta='res', filecode = str(N), close = True)
-        extras = {'CL_prof':CL, 'CD_prof':CD, 'endurance':endurance_tramo, 'acc_prof':acc, 'tray_gamma':tray_gamma, 'Mach':Mach, 'a':a, 'W_prof':W}
+        extras = {'CL_prof':CL, 'CD_prof':CD, 'endurance':endurance_tramo, 'acc_prof':acc, 'tray_gamma':tray_gamma}
         return(otp['output'], consumo_post_pen, h_prof, x_prof, Va_prof, ts_prof, Vw_prof, VwD_prof, N, extras)
         
         
 
 if __name__ == "__main__":
-    arr_N = [16, 32, 64, 100]
-    fuels = []
-    mod = True
+    arr_N = [16]
+    mod = False
     for a in arr_N:
         N = a
-        V_test = 1
-        ts_test = 0.95
-        h_test = np.linspace(1.05,1.2, N-1)
+        V_test = 0.9
+        ts_test = 0.9
+        h_test = np.linspace(32.5e3/35e3,1.1,N-1)
         perfil_entrada = data_manag.gen_input_profile(N, V_test, ts_test, h_test)
         
         if mod:
-            NM_opciones = data_manag.gen_sim_opciones('optimizar',0)
-            NM_results = sp.minimize(simulador_crucero, perfil_entrada['prof_eval'], args=(perfil_entrada['N'],NM_opciones),method='Nelder-Mead', options={'maxiter': 1e7}, tol=1e-3)
+            NM_opciones = data_manag.gen_sim_opciones('optimizar',1)
+            NM_results = sp.minimize(simulador_crucero, perfil_entrada['prof_eval'], args=(perfil_entrada['N'],NM_opciones),method='Nelder-Mead', options={'maxiter': 1e7}, tol=1e-1)
             NM_results['N'] = N
             NM_results['wind_sim'] = NM_opciones['wind_sim']
             
             data_manag.BN_import_export(1,{'ruta':"res",'filename':"NM_output_"+str(N)+"_WTrue"},NM_results)
-        # else:
-            NM_results = data_manag.BN_import_export(0,{'ruta':"res",'filename':"NM_output_"+str(N)+"_WTrue"},0)
-            ev_opciones = data_manag.gen_sim_opciones('evaluar',NM_results['wind_sim'],pen='full',output = 'full')
+
+        else:
+            NM_results = data_manag.BN_import_export(0,{'ruta':"res",'filename':"NM_output_"+str(N)+"_WTrue"},0)  
+            ev_opciones = data_manag.gen_sim_opciones('evaluar',1,pen=True,output = 'full')
             SIM_results = data_manag.gen_res_SIM(*simulador_crucero(NM_results.x, NM_results.N, ev_opciones),ev_opciones['wind_sim'])
             
             data_manag.BN_import_export(1,{'ruta':"res",'filename':"RES_output_"+str(N)+"_WTrue"},SIM_results)
             plot_opciones = data_manag.gen_opt_plots('res','revN'+str(SIM_results['N'])+'Ws'+str(SIM_results['wind_sim']),1,1,1)
             mplots.plot_show_export(plot_opciones, SIM_results,extra_s = 1, extra_data = SIM_results['extras'])
-        print(NM_results.success)
-        fuels.append(SIM_results['W_f'])
+    
+    
     
