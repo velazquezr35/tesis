@@ -8,9 +8,20 @@ Función de penalización para el consumo del crucero, considerando distintos pa
 """
 pen_aportes = {'c_CL':0, 'c_POWER_rec':0, 'c_climb':0, 'c_dist': 0, 'c_ts_MAX':0, 'c_ts_min':0, 'c_trepa': 0, 'c_f':0, 'c_acc':0}
 
-def penalizacion(W_f, CL, P_av, P_req, ts, Drg, Thr, d_h, x_step, x_climb, d_t,Va, pen_status,mode):
+def penalizacion(W_f, h_prof, CL, P_av, P_req, ts, Drg, Thr, d_h, x_step, x_climb, d_t,Va, pen_status,mode):
+        
+    #Control de h negativo
+    log_h = h_prof < 0
+    # pen_aportes['c_hprof'] = -sum(log_h*h_prof)
+    
+    log2 = abs(d_h)>8000
+    # pen_aportes['c_bighstep'] = sum(log2*abs(d_h))
+    
+    log3 = d_h < 0
+    # pen_aportes['c_godown'] = -sum(log3*d_h)
+    
     #Control de CL menor al máximo del avión
-    diff_CL = 1.85-CL
+    diff_CL = 1.6-CL
     log_CL = diff_CL <0
     pen_aportes['c_CL'] = -sum(diff_CL*log_CL)*100 #factor
     
@@ -43,15 +54,6 @@ def penalizacion(W_f, CL, P_av, P_req, ts, Drg, Thr, d_h, x_step, x_climb, d_t,V
     log_TtC = log_Drg > log_Thr
     diff_TD = log_Thr-log_Drg
     
-    
-    if pen_status=='full':
-        
-        print("logica trepda")
-        print(log_TtC)
-        
-        print("Penalización por thr Drg en trepada")
-        print(diff_TD*log_TtC)
-    
     #Si hay diff:
     
     pen_aportes['c_climb'] = -sum(diff_TD*log_TtC)*5e2
@@ -66,7 +68,7 @@ def penalizacion(W_f, CL, P_av, P_req, ts, Drg, Thr, d_h, x_step, x_climb, d_t,V
     
     #TEST el consumo calculado no puede ser mayor a la masa del avión
     log_wf = W_f>400e3
-    pen_aportes['c_f'] = log_wf*2*W_f
+    pen_aportes['c_f'] = log_wf*2*W_f*0
     
     if log_wf:
         print("Alerta consumo total")

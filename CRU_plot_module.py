@@ -130,7 +130,7 @@ def plot_show_export(opt, res_data, **kwargs):
 
 #Ploteo de Va profile
     fig,ax = plt.subplots()
-    ax.plot(res_data['x_prof']*scale_factor['x_sf'], res_data['Va_prof'],marker='o', label = 'perfil optimizado')
+    ax.plot(res_data['x_prof'][:-1]*scale_factor['x_sf'], res_data['Va_prof'],marker='o', label = 'perfil optimizado')
     ax.set_title("Perfil de vuelo crucero - x vs Va, N: "+str(res_data['N']))
     ax.set_xlabel("dist "+scale_factor['x_um'])
     ax.set_ylabel("Va [ft/s]")
@@ -146,7 +146,7 @@ def plot_show_export(opt, res_data, **kwargs):
         
 #Ploteo de ts profile
     fig,ax = plt.subplots()
-    ax.plot(res_data['x_prof']*scale_factor['x_sf'], res_data['ts_prof'],marker='o', label = 'perfil optimizado')
+    ax.plot(res_data['x_prof'][:-1]*scale_factor['x_sf'], res_data['ts_prof'],marker='o', label = 'perfil optimizado')
     ax.set_title("Perfil de vuelo crucero - x vs ts, N: "+str(res_data['N']))
     ax.set_xlabel("dist "+scale_factor['x_um'])
     ax.set_ylabel("ts [adim]")

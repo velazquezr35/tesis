@@ -104,9 +104,9 @@ def gen_sim_opciones(tipo, wind, **kwargs):
 
 def gen_input_profile(N, Va_adim, ts, h_adim):
     '''Clase para definir inputs'''
-    loc_prof_eval = np.zeros(3*N-1)
-    loc_prof_eval[:N] = Va_adim
-    loc_prof_eval[N:2*N] = ts
-    loc_prof_eval[2*N:] = h_adim
+    loc_prof_eval = np.zeros((3*N)-3)
+    loc_prof_eval[:N-1] = Va_adim
+    loc_prof_eval[N-1:2*(N-1)] = ts
+    loc_prof_eval[2*(N-1):] = h_adim
     return({'N':N, 'prof_eval':loc_prof_eval})
 
