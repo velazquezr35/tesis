@@ -55,19 +55,8 @@ Función única del código, que realiza lo anterior.
 ### CRU_extra_funcs
 Archivo principal.
 
-Contiene la info del modelo atmosférico, el modelo del motor (copiado de la tesis ejemplo), el modelo de CD0 de la polar del avión y los datos del avión (S, peso inicial, AR, Oswald).
+Contiene la info del modelo atmosférico ISA, manejo y generación del 'avión' (modelos de motor, parámetros, modelo de polar, etc.) de OpenAP.
 
-#### Funciones / Clases
-```
-class BO_767300():
-```
-
-```
-fun turbofan():
-```
-```
-fun isa_ATM(h [SI]):
-```
 
 ### CRU_wind_eval
 Archivo principal.
@@ -95,8 +84,6 @@ Archivo auxiliar.
 
 Ploteo de perfiles de vuelo.
 Ploteo de gráficas comparativas para corridas multi-N.
-
-#
 
 ### META_main
 Archivo principal.
