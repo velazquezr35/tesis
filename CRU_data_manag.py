@@ -81,7 +81,7 @@ def gen_res_SIM(salida, W_f, h_prof, x_prof, Va_prof, ts_prof, Vw_prof, VD_prof,
 
         
 def gen_sim_opciones(tipo, wind, **kwargs):
-    ''' Clase para opciones de ejecución del simulador \n
+    ''' Dict para opciones de ejecución del simulador \n
     optimizar = Corrida sin salidas \n
     evaluar = Corrida con salidas \n
     kwargs: pen, plot, output \n

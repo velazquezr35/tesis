@@ -9,9 +9,14 @@ Versión comentada
 Módulo para el manejo general de los distintos files que requiere el eco META.
 
 """
+
+#Librerías
+
 import numpy as np
 import igra
 import os
+import pickle
+
 ### Funciones para manejo de archivos
 
 def determine_files(prefix, folder, **kwargs):
@@ -66,6 +71,8 @@ def read_station(fname, folder, data_req, size, **kwargs):
     
     loc_alt = np.array([])
     loc_values = np.array([])
+    if data_req == 'two':
+        loc_values2 = np.array([])
     
     if size == 0:
         size = len(bulk_data)
@@ -82,6 +89,9 @@ def read_station(fname, folder, data_req, size, **kwargs):
                         loc_values = np.append(loc_values,bulk_data.winds[data_count])
                 elif data_req == 'dir':
                     loc_values = np.append(loc_values,bulk_data.windd[data_count])
+                elif data_req == 'two':
+                    loc_values = np.append(loc_values,bulk_data.winds[data_count])
+                    loc_values2 = np.append(loc_values2,bulk_data.windd[data_count])
                 else:
                     return('Error, definir data_req spd or dir')
         data_count += 1
@@ -91,12 +101,17 @@ def read_station(fname, folder, data_req, size, **kwargs):
             lat = lects.lat[i]
             lon = lects.lon[i]
             break
-    
+
+    if data_req == 'two':
+        loc_values2 = loc_values2[loc_alt.argsort()]
     loc_values = loc_values[loc_alt.argsort()]
     loc_alt = np.sort(loc_alt)
     if len(loc_alt) == 0:
         raise ValueError('Set vacío. Verificar archivo')
-    return(loc_alt, loc_values, lat, lon)
+    if data_req == 'two':
+        return(loc_alt, loc_values, loc_values2, lat, lon)
+    else:
+        return(loc_alt, loc_values, lat, lon)
 
 def gen_input(stations_info, data_req, glob_size, **kwargs):
     '''Función para generar el vector input X, v de dim n \n
@@ -138,6 +153,20 @@ def gen_input(stations_info, data_req, glob_size, **kwargs):
     v = np.transpose([values_data])
     return(X,v)
 
+def BN_import_export(modo,opt,inp):
+    ''' modo 0: cargar resultados \n
+        modo 1: exportar resultados'''
+    if modo:
+        loc_file = open(opt['folder']+"/"+opt['filename'],'wb')
+        pickle.dump(inp,loc_file)
+        loc_file.close()
+        return('data saved')
+    else:
+        loc_file = open(opt['folder']+"/"+opt['filename'],'rb')
+        inp = pickle.load(loc_file)
+        loc_file.close()
+        return(inp)
+
 ###Funciones generales para manejo de estructuras de datos
 
 def merge_dict(dct):
@@ -174,7 +203,6 @@ if __name__ == '__main__':
     sta_prefix = ['ARM', 'BRM']
     sta_folder = 'station_data'
     run_folder = 'station_data/run'
-
     read = False
     if read:
         av_files = determine_files(sta_prefix,sta_folder)

@@ -48,6 +48,7 @@ def penalizacion(W_f, h_prof, CL, P_av, P_req, ts, Drg, Thr, d_h, x_step, x_clim
     #TEST: Penalizar descensos
     pen_aportes['c_trepa'] = -sum(log_dh_neg*d_h)*0
     
+    #Trepada
     log_Drg = log_dh * Drg
     log_Thr = log_dh * Thr
     
