@@ -5,6 +5,8 @@ Created on Fri Apr  9 16:26:04 2021
 @author: Ramon Velazquez
 
 Tesis de Grado 2021 - Ing. Aeronautica FCEFyN
+
+Modulo principal para el calculo y optimizacion del vuelo crucero de aeronaves comerciales
 """
 
 """
@@ -256,7 +258,7 @@ def cruise_sim(profile,N, otp, mod_aeronave, **kwargs):
     
     LATs[M], LONGs[M] = nav.nav_route(x_prof[M]/funcs.OTH_2_EN['mi_ft'],prog_dists,prog_fw_azi,prog_LATs, prog_LONs)[:2]
     consumo_fuel = abs((W[0]-W[N-1]))
-    consumo_post_pen = penal.penalizacion(consumo_fuel, h_prof, CL, P_disp, P_req, ts_prof, Drg_trepada, Thr_trepada,d_h,d_x, d_rec_trepada, d_t, Va_prof, otp['pen_flag'], 'normal')
+    consumo_post_pen = penal.penalizacion(consumo_fuel, h_prof, CL, P_disp, P_req, ts_prof, Drg_trepada, Thr_trepada,d_h,d_x, d_rec_trepada, otp['pen_flag'], 'normal')
 
     if otp['output'] == "only":
         return(consumo_post_pen)
@@ -264,9 +266,6 @@ def cruise_sim(profile,N, otp, mod_aeronave, **kwargs):
         return(otp['output'], consumo_post_pen, h_prof, x_prof, Va_prof, ts_prof, Vw_prof, VwD_prof, N, 0)
     if otp['output'] =="full":
         print("In progress - Salida completa")
-        print(Thr)
-        print(Drg)
-        print(Thr_disp*ts_prof)
         nav.plot_ruta(LATs, LONGs, save=True, ruta='res', filecode = str(N), close = True)
         extras = {'CL_prof':CL, 'CD_prof':CD, 'endurance':endurance_tramo, 'acc_prof':acc, 'tray_gamma':tray_gamma, 'Mach':Mach, 'a':a, 'W_prof':W}
         return(otp['output'], consumo_post_pen, h_prof, x_prof, Va_prof, ts_prof, Vw_prof, VwD_prof, N, extras)

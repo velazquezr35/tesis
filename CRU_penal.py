@@ -4,76 +4,96 @@ Created on Fri Oct  2 21:09:38 2020
 
 @author: Ramon Velazquez
 
-Función de penalización para el consumo del crucero, considerando distintos parámetros del vuelo
+Tesis de Grado 2021 - Ing. Aeronautica FCEFyN
+
+Modulo de penalizacion para la funcion de costo del problema
+"""
+
+"""
+------------------------------------------------------------------------------
+Opciones globales
+------------------------------------------------------------------------------
 """
 pen_aportes = {'c_CL':0, 'c_POWER_rec':0, 'c_climb':0, 'c_dist': 0, 'c_ts_MAX':0, 'c_ts_min':0, 'c_trepa': 0, 'c_f':0, 'c_acc':0}
 
-def penalizacion(W_f, h_prof, CL, P_av, P_req, ts, Drg, Thr, d_h, x_step, x_climb, d_t,Va, pen_status,mode):
-        
-    #Control de h negativo
+"""
+------------------------------------------------------------------------------
+Funciones
+------------------------------------------------------------------------------
+"""
+def penalizacion(W_f, h_prof, CL, P_av, P_req, ts, Drg, Thr, d_h, x_step, x_climb, pen_status,mode):
+    '''
+    Funcion de penalizacion para la funcion de costo del vuelo crucero. Agrega combustible segun el incumplimiento de una serie de condiciones
+    inputs: 
+        W_f, float - Peso final de crucero (unidades correspondientes)
+        h_prof, narray - Perfil de altitudes (unidades correspondientes)
+        CL, narray - Perfil de coeficientes de sustentacion
+        P_av, narray - Perfil de potencias disponibles (unidades correspondientes)
+        P_req, narray - Perfil de potencias requeridas (unidades correspondientes)
+        t_s, narray - Perfil de mando de gas
+        Drg, narray - Perfil de resistencias (unidades correspondientes)
+        Thr, narray - Perfil de empujes (unidades correspondientes)
+        d_h, narray - Perfil de steps en altitud (unidades correspondientes)
+        x_step, narray - Perfil de steps en distancia (unidades correspondientes)
+        x_climb, narray - Perfil de distancias consumidas en trepada (unidades correspondientes)
+        d_t, narray - Perfil de tiempos consumidos en trepada (unidades correspondientes)
+        Va, narray - Perfil de velocidades aerodinamicas (unidades correspondientes)
+        pen_status, str - Indicador de prints y salida: #VER SI DEJAR
+            'norm' - Normal return mode
+            'full' - IN PROGRESS
+        mode, str - Indicador de return
+
+    returns: 
+        segun valor de mode:
+            'normal' - return only del Wf penalizado
+            'cperfil' - return Wf penalizado y {dict} perfil de coeficientes de penalizacion
+    '''
+    
+    #Control de altitud negativa
     log_h = h_prof < 0
-    # pen_aportes['c_hprof'] = -sum(log_h*h_prof)
+    pen_aportes['c_hprof'] = -sum(log_h*h_prof)
     
-    log2 = abs(d_h)>8000
-    # pen_aportes['c_bighstep'] = sum(log2*abs(d_h))
-    
-    log3 = d_h < 0
+    #Tentativo penalizar bajadas:
+    # log3 = d_h < 0
     # pen_aportes['c_godown'] = -sum(log3*d_h)
     
-    #Control de CL menor al máximo del avión
+    #Control de CL maximo
+    #(Asumiendo 1.6)
     diff_CL = 1.6-CL
     log_CL = diff_CL <0
-    pen_aportes['c_CL'] = -sum(diff_CL*log_CL)*100 #factor
+    pen_aportes['c_CL'] = -sum(diff_CL*log_CL)*100
     
-    #Potencia disponible en vuelo recto debe ser mayor a la req
+    #Control de potencia disponible mayor a la requerida
     diff_POWER_rec = P_av - P_req
     log_POWER_rec = P_av<P_req
+    pen_aportes['c_POWER_rec'] = -sum(diff_POWER_rec*log_POWER_rec)*100
     
-    pen_aportes['c_POWER_rec'] = -sum(diff_POWER_rec*log_POWER_rec)*100 #factor
-    
-    #Mando gas debe ser entre 1 y 0
+    #Control de posicion del mando de gas
     log_ts_min = ts<0
-    pen_aportes['c_ts_min'] = -sum(ts*log_ts_min)*1e3 #factor
-    
+    pen_aportes['c_ts_min'] = -sum(ts*log_ts_min)*1e3
     diff_ts = 1 - ts
     log_ts_MAX = diff_ts<0
     pen_aportes['c_ts_MAX'] = -sum(log_ts_MAX*diff_ts)*1e8
     
-    #Empuje en trepada > drag si o si
-    log_dh = d_h > 0 #si trepa
-    
-    log_dh_neg = d_h < 0
-    
-    
-    #TEST: Penalizar descensos
-    pen_aportes['c_trepa'] = -sum(log_dh_neg*d_h)*0
-    
-    #Trepada
+    #Control de empuje en trepada mayor a la resistencia
+    log_dh = d_h > 0
     log_Drg = log_dh * Drg
     log_Thr = log_dh * Thr
-    
     log_TtC = log_Drg > log_Thr
     diff_TD = log_Thr-log_Drg
-    
-    #Si hay diff:
-    
     pen_aportes['c_climb'] = -sum(diff_TD*log_TtC)*5e2
     
-    #La distancia recorrida en trepada no puede ser mayor que el step
-    
+    #Control distancia recorrida en trepada no mayor al step en x
     diff_dist = x_step-x_climb
     log_dist = diff_dist < 0
-
-    
     pen_aportes['c_dist'] = -sum(diff_dist*log_dist)*5
     
-    #TEST el consumo calculado no puede ser mayor a la masa del avión
-    log_wf = W_f>400e3
-    pen_aportes['c_f'] = log_wf*2*W_f*0
-    
-    if log_wf:
-        print("Alerta consumo total")
-        print(W_f)
+    #Tentativo penalizar consumo maximo calculado no mayor a la masa inicial del avion
+    # log_wf = W_f>400e3
+    # pen_aportes['c_f'] = log_wf*2*W_f*0 
+    # if log_wf:
+    #     print("Alerta consumo total")
+    #     print(W_f)
 
     if pen_status=='norm' or pen_status == 'full':
         print(pen_aportes)

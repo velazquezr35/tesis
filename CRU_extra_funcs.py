@@ -3,20 +3,35 @@
 Created on Fri Aug 28 08:45:46 2020
 
 @author: Ramon Velazquez
+
+Tesis de Grado 2021 - Ing. Aeronautica FCEFyN
+
+Modulo de funciones extra y avion (ACOMODAR)
 """
 
-##Modelo avión empuje etc
+"""
+------------------------------------------------------------------------------
+Importar
+------------------------------------------------------------------------------
+"""
 import numpy as np
 from skaero.atmosphere import coesa
 from openap import prop
 from openap import Thrust
 from openap import Drag
 from openap import FuelFlow
-#New version
 
+"""
+------------------------------------------------------------------------------
+Clases
+------------------------------------------------------------------------------
+"""
 class plane():
     '''Clase genérica para utilizar los distintos aviones disponibles en OpenAP. Contiene propiedades generales y funciones particulares del avión \n
-    input: 'model', 'eng' \n'''
+    inputs:
+        'model', str - Modelo de avion
+        'eng', str - Modelo de motor para 'model'
+        '''
     
     def __init__(self,model, engine):
         self.model = model
@@ -65,26 +80,29 @@ class plane():
         else:
             CD0 = base_cd0 + 20*np.power(Ma-wave_Mach,4)
         return(CD0)
-
-
-
-
+"""
+------------------------------------------------------------------------------
+Dicts de escalas y unidades
+------------------------------------------------------------------------------
+"""
 #Info aire
 SI_air = {'R': 287, 'g':9.81, 'gamma': 1.4}
 #Conversión de unidades // Info aire
 SI_2_EN = {'R_air': 5.979094077, 'area': 10.7639, 'lon':3.28084, 'temp': 1.8, 'den':0.0019577143, 'pres':0.020885434273039, 'spd':3.28084, 'mass':2.20462}
-
 OTH_2_EN = {'mi_ft':5280}
 OPEN_2_EN = {'mass': 2.20462, 'area':10.7639, 'speed':1.68781, 'force':0.2248}
 
-
+"""
+------------------------------------------------------------------------------
+Funciones
+------------------------------------------------------------------------------
+"""
 def isa_ATM(h, output_un): #ingreso input en FT, paso a metros
-
-    '''Función atmosférica en SI basada en modelo U.S. 1976 Standard Atmosphere \n
-    input: h [SI] \n
-    output: T, p, rho [selecc] \n
-    mode: 'EN_tesis': Salida sistema EN tesis \n
-            ' ': Salida SI '''
+    '''Función atmosférica en SI basada en modelo U.S. 1976 Standard Atmosphere
+    inputs:
+        h, float - En unidades [SI]
+        output_un, str - Define el sistema de unidades de salida: 'EN_tesis' sistema ingles de tesis ejempli, 'SI', sistema internacional
+        '''
     if h < 0:
         h = 0
     eco, T, p, rho = coesa.table(h)
@@ -101,6 +119,13 @@ def isa_ATM(h, output_un): #ingreso input en FT, paso a metros
     return([rho,T,a,p])
 
 def inv_conversion(factores):
+    '''
+    Funcion basica para la inversion de factores de conversion, para pasar de un sistema a otro
+    inputs:
+        factores, dict - Contiene los factores a invertir
+    output:
+        loc_inv, dict - Factores de escala invertidos
+        '''
     loc_inv = {}
     for i in factores:
         loc_inv[str(i)] = 1/factores[str(i)]
@@ -109,10 +134,12 @@ def inv_conversion(factores):
 
 
 if __name__ == "__main__":
+    '''
+    Ploteo muy basico de un modelo de motor testeando la libreria
+    '''
     miavion = plane('A320','V2500-A1')
     alts = [0, 25e3]
     spd = np.linspace(0,800,50)
-    
     spd = spd/OPEN_2_EN['speed']
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots()
