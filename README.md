@@ -55,19 +55,8 @@ Función única del código, que realiza lo anterior.
 ### CRU_extra_funcs
 Archivo principal.
 
-Contiene la info del modelo atmosférico, el modelo del motor (copiado de la tesis ejemplo), el modelo de CD0 de la polar del avión y los datos del avión (S, peso inicial, AR, Oswald).
+Contiene la info del modelo atmosférico ISA, manejo y generación del 'avión' (modelos de motor, parámetros, modelo de polar, etc.) de OpenAP.
 
-#### Funciones / Clases
-```
-class BO_767300():
-```
-
-```
-fun turbofan():
-```
-```
-fun isa_ATM(h [SI]):
-```
 
 ### CRU_wind_eval
 Archivo principal.
@@ -96,44 +85,27 @@ Archivo auxiliar.
 Ploteo de perfiles de vuelo.
 Ploteo de gráficas comparativas para corridas multi-N.
 
-#
-
-### META_main_kringing
+### META_main
 Archivo principal.
 
-Genera el metamodel utilizando los perfiles input proovistos. Además toma el tiempo que tarda su ejecución. Devuelve el modelo terminado.
+Archivo para comandar la generación, manejo y testeo de los MetaModels
 
-### META_generador_datos
+### META_handler
 Archivo principal.
 
-Este archivo contiene una función que provee M líneas de un archivo de texto .txt que contiene las lecturas de la magnitud y dirección del viento f(h). Además, filtra y ordena, debido a que la información se presenta en "bloques" y no todas las líneas son utilizables. La restricción de M líneas viene del tamaño máximo del array que puede alimentarse a #main_kringing (error bad_alloc).
+Este archivo contiene las funciones principales que verificarn estaciones, descargan desde IGRAA, leen, filtran y generan inputos para alimentar modelos Krg. Funciones extras para manejo de datos.
 
-Además contiene opciones de impresión y ploteo built-in.
+### META_quatests
+Archivo secundario.
 
+Archivo planteado para incluir tests que las estaciones deben aprobar para ser incluidas en los META. Esto evita la generación de valores no físicos en la evaluación de los metamodels. Generalmente ocurre por disponer información hasta cotas bajas.
 
-### META_test_evaluador
-Archivo temporal.
-
-Archivo temporal que se utiliza para obtener modelos intermedios y definitivos, sacar gráficas, comparar y probar el análisis de viento. Idealmente este archivo no va a formar parte de la tesis, sino que sus funciones más importantes se guardarían en #mods_utiles p/ej.
-
-### META_OS_module
-Archivo auxiliar.
-
-Generado para leer las estaciones que hay disponibles en una carpeta de "datos". Posibilidad de incluir funciones-filtro.
-
-
-### META_mods_utiles
+### META_plots
 Archivo principal.
 
-Contiene funciones varias para generar, evaluar, probar, plotear y filtrar los modelos-meta.
+Contiene funciones varias para plotear de manera genérica datos y evaluaciones de modelos.
 
-#### Funciones de interés
+### META_krg_factory
+Archivo principal.
 
-```
-generar_input():
-```
-Función que genera el perfil que se alimenta a #main_kringing para la generación del modelo de viento. Esta función lee estación por estación la info y la agrupa en un array 'global'. Sirve para generar perfiles de Magnitud y de Dirección.
-```
-exp_imp_meta
-```
-Función que guarda/carga el estudio del META en formato .XML de modo que se disponga del mismo para posteriores corridas con el optimizador / simulador. 
+Contiene la función para generar el MetaModel con OpenTurns. Además, permite su exportación e importación en formato .XML. Función extra para evaluar punto a punto o sobre arrays.
