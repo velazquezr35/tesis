@@ -1,4 +1,4 @@
-# Tesis - Current version: 20 05 21
+# Tesis - Current version: 22 07 21
 Tesis Rodrigo Velazquez - Optimizador de crucero + Modelo de viento 3D WS//WD. 
 
 El código en general requiere las siguientes librerías:
