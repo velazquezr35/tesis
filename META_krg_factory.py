@@ -4,19 +4,35 @@ Created on Tue May 25 16:05:16 2021
 
 @author: Ramon Velazquez
 
+Tesis de Grado 2021 - Ing. Aeronautica FCEFyN - Version comentada
+
 Módulo para la generación de metamodels krg con inputs, casos 3D para WDDIR y WDSPEED.
 Funciones para evaluación standalone individual y sobre grillas.
 """
 
+"""
+------------------------------------------------------------------------------
+Importar
+------------------------------------------------------------------------------
+"""
 import openturns as ot
 import numpy as np
 import time
 
+"""
+------------------------------------------------------------------------------
+Funciones
+------------------------------------------------------------------------------
+"""
 def generar_modelo(X, v, mod_opts, **kwargs):
     ''' Función para generar metamodels genérica \n
-    [INPUT]: X, muestra de datos indep. v, muestra de datos dep. \n
-    mod_otps: dict 'dim', 'scale' \n
-    [RETURNS]: KM, metamodel. data, dict con info de ejecución.
+    inputs:
+        X, ndarray - vector muestra de datos indep
+        v, ndarray - vector muestra de datos dep
+        mod_opts, dict - opciones de generacion
+    kwargs puede contener:
+    returns:
+        KM, KM_data, META obj and info
     '''
     #Defaults
     pr_status = True
@@ -49,9 +65,13 @@ def generar_modelo(X, v, mod_opts, **kwargs):
 
 def evaluar_modelo(Model, X, mode, **kwargs):
     '''Función para evaluar de manera genérica un META \n
-    [INPUT]: Modelo, vector X de dim deseada formato h,lat,lon según convención \n
-    mode: 'puntual', 'one_var' (dicts y, z si corresponde)
-    [OUTPUT]: Valor o Valor + extra info de OP'''
+    inputs:
+        Model, META obj - Modelo a evaluar
+        X, ndarray - Vector de dimension deseada formato (h,lat,lon) segun convencion
+        mode, str - Modo de evaluacion 'puntual', 'one_var' (dicts y, z si corresponde)
+    kwargs puede contener:
+    outputs:
+        valor or valor + extra info'''
     
     #Defaults
     out = 'simple'
@@ -86,9 +106,12 @@ def evaluar_modelo(Model, X, mode, **kwargs):
 
 def exp_imp_modelo(KM, modo, file_info):
     '''Función para exportar e importar METAs \n
-    [INPUT]: KM: metamodel modo: 'exp','imp',\n
-    file_info: dict 'folder', 'name', 'prefix'
-    [RETURNS]: En caso de carga, META'''
+    inputs:
+        KM, META - Modelo a guardar
+        modo, str - Modo de funcionamiento 'exp' or 'imp' para exportar o importar respectivamente
+        filen_info, dict - Opciones para leer/guardar {'folder', 'name', 'prefix'}
+    returns:
+        para 'imp', META obj leido'''
     
     KM_study = ot.Study()
     s_name = file_info['folder']+'/'+file_info['name']+'.xml'
@@ -107,6 +130,11 @@ def exp_imp_modelo(KM, modo, file_info):
     else:
         raise ValueError('Definir correctamente si exportar o importar')
 
+"""
+------------------------------------------------------------------------------
+Standalone
+------------------------------------------------------------------------------
+"""
 if __name__ == '__main__':
     
     X = {'vals':np.linspace(0,10,10),'tipo':0}

@@ -4,27 +4,44 @@ Created on Wed May 26 14:41:02 2021
 
 @author: Ramon Velazquez
 
-Submódulo para tests y pruebas sobre archivos de datos y metamodels
+Tesis de Grado 2021 - Ing. Aeronautica FCEFyN
+
+Módulo para tests y pruebas sobre archivos de datos y metamodels
 """
 
-#Librerías
+"""
+------------------------------------------------------------------------------
+Importar
+------------------------------------------------------------------------------
+"""
 import META_handler as handler
 import numpy as np
 import os
 from skaero.atmosphere import coesa
 
-#Defaults
-
+"""
+------------------------------------------------------------------------------
+Opciones globales
+------------------------------------------------------------------------------
+"""
 out_folder = 'station_data/apartados'
 glob_log = {'filename':'quatests_log', 'folder':'station_data'}
 
-#Funciones de tests
-
+"""
+------------------------------------------------------------------------------
+Funciones
+------------------------------------------------------------------------------
+"""
 def station_test(sta,limits, **kwargs):
-    '''Función que lee individualmente una estación y determina si sirve para generar modelos. \n
-    El principal limitante es el h máx. \n
-    [INPUT]: dict sta, 'file', 'folder'. dict limits 'h_lim' c/ cond. de encendido. '''
-    #Defaults
+    '''Filtro sencillo para determinar la utilidad de estaciones
+    inputs:
+        sta, dict - Informacion de la estacion {'file', 'folder'}
+        limits, dict - Filtro {'h_lim', coming soon...}
+    kwargs puede contener:
+        
+    returns:
+        none - Cambia de lugar archivo file si corresponde
+        '''
     data_req = 'two'
     try:
         bulk_alt, bulk_spd, bulk_dir, lat, lon = handler.read_station(sta['filename'],sta['folder'],data_req,0)
@@ -45,8 +62,16 @@ def station_test(sta,limits, **kwargs):
         return('Done')
 
 def control_report(modo, log_file, **kwargs):
-    '''Función para llevar un seguimiento de la utilidad de las estaciones. Una suerte de white/black list \n
-    kwargs for save: filename, fecha, Nsize, hlim, N_over_hlim '''
+    '''
+    Funcion para llevar un seguimiento de la utilidad de las estaciones, una suerte de white/black lst
+    inputs:
+        modo, bool - 
+        log_gile, 
+    kwargs puede contener:
+        filename, fecha, Nsize, hlim, N_over_hlim
+    returns:
+        if not modo, -
+    '''
     if modo:
         
         data = {}
@@ -72,9 +97,16 @@ def control_report(modo, log_file, **kwargs):
     else:
         return(handler.BN_import_export(False,log_file,0))
     
-#Funciones para la generación de estructuras y condiciones 
+
 def gen_ok_conds(h_lim):
-    #Defaults
+    '''
+    Funcion para la generacion de estructuras y condiciones (dicts usuales)
+    inputs:
+        h_lim, float - Limite minimo de altitud deseado
+    returns:
+        conds, dict - Diccionario que contiene un paquete para el test
+    '''
+    #Defaults hardcoded
     h_lim_cond = True
     min_lim_cond = False
     tot_val_cond = False   
@@ -82,8 +114,15 @@ def gen_ok_conds(h_lim):
     conds = {'h_lim_cond':h_lim_cond,'h_lim_val':h_lim, 'min_lim_cond':min_lim_cond,'tot_val_cond':tot_val_cond}
     return(conds)
     
-    
+"""
+------------------------------------------------------------------------------
+Funciones
+------------------------------------------------------------------------------
+""" 
 if __name__ == '__main__':
+    '''
+    Tests manuales sencillos
+    '''
     print('Tests')
     fold = 'station_data/run'
     filelist = os.listdir(fold)
