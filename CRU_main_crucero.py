@@ -187,7 +187,7 @@ def cruise_sim(profile,N, otp, mod_aeronave, **kwargs):
             W_prom = W[j]
             d_W_prom = 1
             counter = 0
-            while d_W_prom > 0.05:
+            while abs(d_W_prom) > 0.01:
                 pre_W_prom = W_prom
                 CL_prom = 2*W_prom/(rho_prom*S*np.power(Va_prom,2))
                 CD0_prom = mod_aeronave._CD0_WDrg(Mach_prom)
@@ -290,8 +290,9 @@ if __name__ == "__main__":
     ruta_info = {'LATs':ruta_LATs, 'LONs':ruta_LONs, 'rev':ruta_rev}
     
     #Seteo de la corrida
+    # N = [4,8,16,32,64,128,256]
     N = 16
-    modo = False #True para optimizar, False para evaluar
+    modo = True #True para optimizar, False para evaluar
     
     V_test = 1
     ts_test = 0.95
