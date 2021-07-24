@@ -31,39 +31,20 @@ Archivo principal.
 
 Código principal para el cálculo de crucero y su optimización. Importa y utiliza otros módulos.
 
-#### Funciones
-```
-simulador_crucero():
-```
-Función principal que calcula el consumo de combustible para un perfil dado. Contiene algunas opciones extras para ploteo rápido de figuras (no definitivo seguramente). Calcula utilizando las ecuaciones de vuelo, preserva las distintas variables y penaliza de manera previa al *return*. Devuelve consumo y perfiles de variables principales.
-
-#### Extras del archivo
-
-Contiene una función para comparar consumo vs N y algunas líneas comentadas al cierre. En proceso de limpieza / mejora.
-
 ### CRU_penal
 Archivo principal.
 
 Código para penalizar el perfil de vuelo post cálculo del consumo. Evalúa los perfiles de ciertas variables y suma combustible según corresponda.
-
-#### Funciones
-```
-penalización():
-```
-Función única del código, que realiza lo anterior.
 
 ### CRU_extra_funcs
 Archivo principal.
 
 Contiene la info del modelo atmosférico ISA, manejo y generación del 'avión' (modelos de motor, parámetros, modelo de polar, etc.) de OpenAP.
 
-
 ### CRU_wind_eval
 Archivo principal.
 
-Función única. Determina rumbo (por ahora ejemplo fijo, se actualizará considerando rutas variables), obtiene magnitud y dirección del viento. Devuelve la componente proyectada local.
-
-**Devuelve en FT/S** (ver si cambiar)
+Función única. Determina rumbo (por ahora ejemplo fijo, se actualizará considerando rutas variables), obtiene magnitud y dirección del viento. Devuelve la componente proyectada local. **Devuelve en FT/S** (ver si cambiar)
 
 ### CRU_nav_module
 Archivo auxiliar. 
