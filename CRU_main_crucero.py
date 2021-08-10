@@ -200,7 +200,7 @@ def cruise_sim(profile,N, otp, mod_aeronave, **kwargs):
                     Thr_prom = ts_prof[j]*Drg_prom
                 
                 h_dot = (Thr_prom-Drg_prom)*Va_prom/W_prom / (1+Va_prom*dV_dh)
-                t_climb = d_h[j]/h_dot
+                t_climb = abs(d_h[j]/h_dot)
                 ct_prom = mod_aeronave._fflow_model_(Thr_prom/funcs.OPEN_2_EN['force'], h_prom, ct_factor = funcs.OPEN_2_EN['mass']) #Ya en lb/s
                 d_fuel = t_climb*ct_prom
                 W_f_climb = W[j] - d_fuel
@@ -208,6 +208,7 @@ def cruise_sim(profile,N, otp, mod_aeronave, **kwargs):
                 d_W_prom = (W_prom-pre_W_prom)/pre_W_prom
                 counter += 1
             
+            tray_gamma[j] = Thr_prom/W_prom - CD_prom/CL_prom
             #Updates correspondientes
             W[j+1] = W_f_climb
             Drg_trepada[j] = Drg_prom
@@ -267,10 +268,14 @@ def cruise_sim(profile,N, otp, mod_aeronave, **kwargs):
     if otp['output'] =="full":
         print("In progress - Salida completa")
         nav.plot_ruta(LATs, LONGs, save=True, ruta='res', filecode = str(N), close = True)
-        extras = {'CL_prof':CL, 'CD_prof':CD, 'endurance':endurance_tramo, 'acc_prof':acc, 'tray_gamma':tray_gamma, 'Mach':Mach, 'a':a, 'W_prof':W}
+        extras = {'CL_prof':CL, 'CD_prof':CD, 'endurance':endurance_tramo, 'acc_prof':acc, 'tray_gamma':tray_gamma, 'Mach':Mach, 'a':a, 'W_prof':W, 'x_trep':d_rec_trepada, 'd_h':d_h}
         return(otp['output'], consumo_post_pen, h_prof, x_prof, Va_prof, ts_prof, Vw_prof, VwD_prof, N, extras)
     
-
+"""
+------------------------------------------------------------------------------
+Standalone
+------------------------------------------------------------------------------
+"""
 if __name__ == "__main__":
     #Ejemplo de user end func
     #(Luego se puede llevar a un archivo aparte, mas limpio)
@@ -290,33 +295,37 @@ if __name__ == "__main__":
     ruta_info = {'LATs':ruta_LATs, 'LONs':ruta_LONs, 'rev':ruta_rev}
     
     #Seteo de la corrida
-    # N = [4,8,16,32,64,128,256]
-    N = 16
-    modo = True #True para optimizar, False para evaluar
+    N_opts = [16]
+    # N = 16
+    modo = False #True para optimizar, False para evaluar
+    wind_status = False
     
-    V_test = 1
-    ts_test = 0.95
-    h_test = np.linspace(1.05,1.2, N-1)
-    perfil_entrada = data_manag.gen_input_profile(N, V_test, ts_test, h_test)
-    
-    if modo:
-        NM_opciones = data_manag.gen_sim_opciones('optimizar',wind=False)
-        #Ver de agregar esto directo en generar opciones
-        NM_opciones['wind'] = wind_mods
-        NM_opciones['ruta'] = ruta_info
-        NM_results = sp.minimize(cruise_sim, perfil_entrada['prof_eval'], args = (perfil_entrada['N'], NM_opciones, avion_A320), method = 'Nelder-Mead', options={'maxiter': 1e7}, tol=1e-3)
-        NM_results['N'] = N
-        NM_results['wind_sim'] = NM_opciones['wind_sim']
-        data_manag.BN_import_export(1,{'ruta':"res",'filename':"NM_output_"+str(N)+"_indicadorW"},NM_results)
-    else:
-        NM_results = data_manag.BN_import_export(0,{'ruta':"res",'filename':"NM_output_"+str(N)+"_indicadorW"},0)
-        ev_opciones = data_manag.gen_sim_opciones('evaluar',NM_results['wind_sim'],pen='full',output = 'full')
-        ev_opciones['wind'] = wind_mods
-        ev_opciones['ruta'] = ruta_info
-        SIM_results = data_manag.gen_res_SIM(*cruise_sim(NM_results.x, NM_results.N, ev_opciones,avion_A320),ev_opciones['wind_sim'])
-        data_manag.BN_import_export(1,{'ruta':"res",'filename':"RES_output_"+str(N)+"_indicadorW"},SIM_results)
-        plot_opciones = data_manag.gen_opt_plots('res','revN'+str(SIM_results['N'])+'Ws'+str(SIM_results['wind_sim']),1,1,1)
-        mplots.plot_show_export(plot_opciones, SIM_results,extra_s = 1, extra_data = SIM_results['extras'])
-        print(NM_results.success)
-        print(SIM_results['W_f'])
+    for N in N_opts:
+        V_test = 1
+        ts_test = 0.95
+        h_test = np.linspace(1.05,1.2, N-1)
+        perfil_entrada = data_manag.gen_input_profile(N, V_test, ts_test, h_test)
+        
+        if modo:
+            NM_opciones = data_manag.gen_sim_opciones('optimizar',wind=wind_status)
+            #Ver de agregar esto directo en generar opciones
+            NM_opciones['wind'] = wind_mods
+            NM_opciones['ruta'] = ruta_info
+            NM_results = sp.minimize(cruise_sim, perfil_entrada['prof_eval'], args = (perfil_entrada['N'], NM_opciones, avion_A320), method = 'Nelder-Mead', options={'maxiter': 1e7}, tol=1e-3)
+            NM_results['N'] = N
+            NM_results['wind_sim'] = NM_opciones['wind_sim']
+            data_manag.BN_import_export(1,{'ruta':"res",'filename':"NM_output_"+str(N)+"_W"+str(wind_status)},NM_results)
+        else:
+            NM_results = data_manag.BN_import_export(0,{'ruta':"res",'filename':"NM_output_"+str(N)+"_W"+str(wind_status)},0)
+            ev_opciones = data_manag.gen_sim_opciones('evaluar',NM_results['wind_sim'],pen='full',output = 'full')
+            ev_opciones['wind'] = wind_mods
+            ev_opciones['ruta'] = ruta_info
+            SIM_results = data_manag.gen_res_SIM(*cruise_sim(NM_results.x, NM_results.N, ev_opciones,avion_A320),ev_opciones['wind_sim'])
+            data_manag.BN_import_export(1,{'ruta':"res",'filename':"RES_output_"+str(N)+"_W"+str(wind_status)},SIM_results)
+            plot_opciones = data_manag.gen_opt_plots('res','revN'+str(SIM_results['N'])+'Ws'+str(SIM_results['wind_sim']),1,1,0)
+            # mplots.plot_show_export(plot_opciones, SIM_results,extra_s = 1, extra_data = SIM_results['extras'])
+            mplots.ppal_4_plots(plot_opciones, SIM_results, extra_data = SIM_results['extras'])
+            mplots.travel_plot(plot_opciones,SIM_results)
+            print(NM_results.success)
+            print(SIM_results['W_f'])
     

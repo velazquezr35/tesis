@@ -127,7 +127,7 @@ def plot_ruta(LONGs, LATs, **kwargs):
     plt.show()
     if "save" in kwargs:
         if kwargs.get('save'):
-            s_name = kwargs.get('ruta') + "/"+ kwargs.get('filecode')+ "_navplot"
+            s_name = kwargs.get('ruta') + "/"+  "navplot_" +kwargs.get('filecode')
             plt.savefig(s_name, bbox_inches='tight')
 
     if "close" in kwargs:
