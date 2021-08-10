@@ -3,17 +3,35 @@
 Created on Tue May 25 16:05:03 2021
 
 @author: Ramon Velazquez
+
+Tesis de Grado 2021 - Ing. Aeronautica FCEFyN - Version comentada
+
+Módulo principal de los archivos META
+"""
+"""
+------------------------------------------------------------------------------
+Importar
+------------------------------------------------------------------------------
 """
 import META_krg_factory as krg_factory
 import META_handler as handler
 import META_plots as plots
 import os
 
+"""
+------------------------------------------------------------------------------
+Opciones globales
+------------------------------------------------------------------------------
+"""
 sta_prefix = ['ARM', 'BRM']
 sta_folder = 'station_data'
 run_folder = 'station_data/run'
 
-
+"""
+------------------------------------------------------------------------------
+Standalone
+------------------------------------------------------------------------------
+"""
 if __name__ == '__main__':
 
     av_files = os.listdir(run_folder)

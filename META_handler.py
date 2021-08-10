@@ -4,17 +4,35 @@ Created on Mon May 24 22:44:59 2021
 
 @author: Ramon Velazquez
 
-Versión comentada
+Tesis de Grado 2021 - Ing. Aeronautica FCEFyN - Version comentada
 
 Módulo para el manejo general de los distintos files que requiere el eco META.
 
 """
+
+"""
+------------------------------------------------------------------------------
+Importar
+------------------------------------------------------------------------------
+"""
 import numpy as np
 import igra
 import os
-### Funciones para manejo de archivos
+import pickle
 
+"""
+------------------------------------------------------------------------------
+Funciones
+------------------------------------------------------------------------------
+"""
 def determine_files(prefix, folder, **kwargs):
+    '''Funcion para determinar los archivos de estaciones disponibles para su uso
+    inputs:
+        prefix, - Codigo prefijos a usar (paises, zonas)
+        folder, str - Carpeta
+    kwargs pueden contener:
+    returns: des_ind, dict - Indices deseados
+    '''
     for av_files in os.listdir(folder):
         if av_files == 'igra2-station-list.txt':
             print('Archivo de estaciones ya disponible')
@@ -38,6 +56,15 @@ def determine_files(prefix, folder, **kwargs):
     return(des_ind)
 
 def prepare_stations(desired, opt_folder, **kwargs):
+    '''
+    Funcion que comprueba la disponibilidad de archivos en la carpeta local, de modo de evitar re descargarlos
+    inputs:
+        desired, dict - Archivos posibles de descargar y que requieren verificacion
+        opt_folder, str - Carpeta de guardado
+    kwargs puede contener:
+    returns:
+        l_desired, dict - Los que restan
+    '''
     #Ver si ya están para ahorrar el download
     av_files = os.listdir(opt_folder)
     l_desired = merge_dict(desired)
@@ -46,19 +73,28 @@ def prepare_stations(desired, opt_folder, **kwargs):
         for des_ind in l_desired:
             if disp_file[:-13] == des_ind:
                 l_desired.pop(l_desired.index(des_ind))
-
     return(l_desired)
 
 def dwn_stations(required,opt_folder,**kwargs):
+    '''
+    Funcion que descarga estaciones de IGRA
+    inputs:
+        required, list - Estaciones requeridas
+        opt_folder, str - Carpeta destino
+    kwargs puede contener:
+    returns: none
+    '''
     for r in required:
         igra.download.station(r,opt_folder)
 
 def read_station(fname, folder, data_req, size, **kwargs):
-    '''Función que recibe nombre y ubicación de archivo ZIP.\n
-    Se asume que el archivo ya fue filtrado y está OK. \n
-    [INPUT] dict file (name, folder), tipo de dato (WDD o WDSP), n lineas INT \n
-    [RETURN] 'size' datos con info solicitada, sorted en alt creciente'''
-    
+    '''Función que recibe nombre y ubicación de archivo ZIP, asumiendo que ya fue filtrado y está OK.
+    inputs: 
+        fname-folder - Informacion del archivo a leer
+        data_req - Tipo de datos a leer
+        size, int - Tamaño a leer / Cantidad de datos
+    kwargs puede contener:
+    returns: loc_alt, loc_values, lat, lon (segun el indicador data_req)'''
     file_loc = folder+'/'+fname
     print(file_loc)
     
@@ -66,6 +102,8 @@ def read_station(fname, folder, data_req, size, **kwargs):
     
     loc_alt = np.array([])
     loc_values = np.array([])
+    if data_req == 'two':
+        loc_values2 = np.array([])
     
     if size == 0:
         size = len(bulk_data)
@@ -82,6 +120,9 @@ def read_station(fname, folder, data_req, size, **kwargs):
                         loc_values = np.append(loc_values,bulk_data.winds[data_count])
                 elif data_req == 'dir':
                     loc_values = np.append(loc_values,bulk_data.windd[data_count])
+                elif data_req == 'two':
+                    loc_values = np.append(loc_values,bulk_data.winds[data_count])
+                    loc_values2 = np.append(loc_values2,bulk_data.windd[data_count])
                 else:
                     return('Error, definir data_req spd or dir')
         data_count += 1
@@ -91,18 +132,27 @@ def read_station(fname, folder, data_req, size, **kwargs):
             lat = lects.lat[i]
             lon = lects.lon[i]
             break
-    
+
+    if data_req == 'two':
+        loc_values2 = loc_values2[loc_alt.argsort()]
     loc_values = loc_values[loc_alt.argsort()]
     loc_alt = np.sort(loc_alt)
     if len(loc_alt) == 0:
         raise ValueError('Set vacío. Verificar archivo')
-    return(loc_alt, loc_values, lat, lon)
+    if data_req == 'two':
+        return(loc_alt, loc_values, loc_values2, lat, lon)
+    else:
+        return(loc_alt, loc_values, lat, lon)
 
 def gen_input(stations_info, data_req, glob_size, **kwargs):
     '''Función para generar el vector input X, v de dim n \n
-    [INPUTS]: Station filelist, tipo de dato spd or dir, size global \n
-    [RETURNS]: Vectores X, v para Krg'''
-    
+    inputs:
+        station_info, filelist - Informacion de estacion
+        data_req, indicador - Tipo de informacion solicitada
+        glob_size - Tamaño total del vector muestra
+    kwargs puede contener:
+    returns:
+        X, v vectors para KRG META gen'''
     #Defaults
     pr_status = True
     if 'pr_status' in kwargs:
@@ -138,21 +188,48 @@ def gen_input(stations_info, data_req, glob_size, **kwargs):
     v = np.transpose([values_data])
     return(X,v)
 
-###Funciones generales para manejo de estructuras de datos
+def BN_import_export(modo,opt,inp):
+    ''' Funcion para leer o guardar archivos BIN con Pickle
+    inputs: 
+        modo, bool - True para exportar, False para leer
+        opt, dict - Opciones (filename, folder)
+        inp, objeto - Informacion a guardar
+    returns: 
+        inp, objeto - Si corresponde al leer'''
+    if modo:
+        loc_file = open(opt['folder']+"/"+opt['filename'],'wb')
+        pickle.dump(inp,loc_file)
+        loc_file.close()
+        return('data saved')
+    else:
+        loc_file = open(opt['folder']+"/"+opt['filename'],'rb')
+        inp = pickle.load(loc_file)
+        loc_file.close()
+        return(inp)
 
 def merge_dict(dct):
+    '''Funcion para hacer merge de diccionarios
+    inputs:
+        dct, lista de diccionarios
+    returns:
+        ret, dct - un unico dict
+        '''
     ret = []
     for d in dct:
         for loc in dct[d]:
             ret.append(loc)
     return(ret)
 
-###Estructuras de datos
-
 def gen_plot_opts(xlabel,ylabel, save, **kwargs):
-    '''xlabel, ylabel, save \n
-    [RETURN]: dict con opciones para plots
-    kwargs: ruta, filecode, grid '''
+    ''' Funcion para la generacion de dicts de opciones para el ploteo
+    inputs:
+        xlabel, str - Label para eje x
+        ylabel, str - Label para eje y
+        save, bool - Condicion para guardar imagen
+    kwargs puede contener:
+    returns: 
+        d_plot, dict - Opciones para el ploteo
+    '''
     d_plot_opts = {'xlabel':xlabel, 'ylabel':ylabel, 'save': bool(save)}
     
     #Defaults
@@ -167,14 +244,17 @@ def gen_plot_opts(xlabel,ylabel, save, **kwargs):
         d_plot_opts['close'] = bool(kwargs.get('close'))
     return(d_plot_opts)
 
-###Standalone
-    
+
+"""
+------------------------------------------------------------------------------
+Standalone
+------------------------------------------------------------------------------
+"""
 if __name__ == '__main__':
     
     sta_prefix = ['ARM', 'BRM']
     sta_folder = 'station_data'
     run_folder = 'station_data/run'
-
     read = False
     if read:
         av_files = determine_files(sta_prefix,sta_folder)
