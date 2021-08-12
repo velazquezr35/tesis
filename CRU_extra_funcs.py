@@ -91,14 +91,35 @@ SI_air = {'R': 287, 'g':9.81, 'gamma': 1.4}
 SI_2_EN = {'R_air': 5.979094077, 'area': 10.7639, 'lon':3.28084, 'temp': 1.8, 'den':0.0019577143, 'pres':0.020885434273039, 'spd':3.28084, 'mass':2.20462}
 OTH_2_EN = {'mi_ft':5280}
 OPEN_2_EN = {'mass': 2.20462, 'area':10.7639, 'speed':1.68781, 'force':0.2248}
-
+MI_2_FT = {'lon':0.000189394}
 """
 ------------------------------------------------------------------------------
 Funciones
 ------------------------------------------------------------------------------
 """
-def isa_ATM(h, output_un): #ingreso input en FT, paso a metros
-    '''Función atmosférica en SI basada en modelo U.S. 1976 Standard Atmosphere
+
+def inv_isa_ATM(rho, output_un):
+    '''
+    Funcion atmosferica en SI basada en la inversa del modelo U.S. 1976 Standard Atmosphere
+    inputs:
+        rho, float - En unidades [SI]
+        output_un, str - Define el sistema de unidades de salida. 'EN_tesis' para el sistema de ejemplo, 'SI' para el int. clasico
+    returns:
+        h, float - En unidades definido por output_un
+    '''
+    if rho > 1.225:
+        return(0)
+    else:
+        h = coesa.inv_table(rho)
+        if output_un == 'EN_tesis':
+            h = h*SI_2_EN['lon']
+        elif output_un =='SI':
+            pass 
+        return(h)
+    
+
+def isa_ATM(h, output_un):
+    '''Funcion atmosferica en SI basada en modelo U.S. 1976 Standard Atmosphere
     inputs:
         h, float - En unidades [SI]
         output_un, str - Define el sistema de unidades de salida: 'EN_tesis' sistema ingles de tesis ejempli, 'SI', sistema internacional

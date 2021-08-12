@@ -295,9 +295,9 @@ if __name__ == "__main__":
     ruta_info = {'LATs':ruta_LATs, 'LONs':ruta_LONs, 'rev':ruta_rev}
     
     #Seteo de la corrida
-    N_opts = [16]
+    N_opts = [128, 256]
     # N = 16
-    modo = False #True para optimizar, False para evaluar
+    modo = True #True para optimizar, False para evaluar
     wind_status = False
     
     for N in N_opts:

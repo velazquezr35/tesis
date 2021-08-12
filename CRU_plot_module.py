@@ -395,6 +395,48 @@ def ppal_4_plots(opt, res_data, **kwargs):
         plt.savefig(s_name,bbox_inches='tight')
     if opt['close']:
         plt.close()
+        
+def plot_propN(N_arr,prop,opt, **kwargs):
+    '''
+    Funcion que plotea una propiedad de los resultados de simulacion en funcion de N
+    inputs:
+        prop, ndarray - Variable dependiente
+        N_arr, ndarray - Variable N independiente
+    kwargs:
+    returns:
+        ax, matplotlib ax obj
+    '''
+    if 'wind_sim' in kwargs:
+        wind_sim = kwargs.get('wind_sim')
+    else:
+        wind_sim = '¿?'
+    if 'grid' in opt:
+        grid_status = opt['grid']
+    else:
+        grid_status = True
+    fig, ax = plt.subplots()
+    if type(prop)==list:
+        for loc_prop in prop:
+            ax.plot(N_arr,loc_prop, label = '')
+    else:
+        ax.plot(N_arr,prop,label='')
+    ax = add_ticks(ax,x=N_arr,**kwargs)
+    if grid_status:
+        ax.grid(which='minor', alpha=0.2)
+        ax.grid(which='major', alpha=0.5)
+    ax.set_title('Viento: '+wind_sim)
+    ax.legend(title = 'Perfile óptimos')
+    fig.suptitle('Comparativa de consumos')
+    if opt['save']:
+        s_name = opt['ruta'] + "/" + opt['filecode'] + "_WfvsNplot"
+        plt.savefig(s_name, bbox_inches='tight')
+    if opt['close']:
+        plt.close()
+    return(ax)
+        
+###############################################################################################
+#General tools funcs
+###############################################################################################
     
 def add_ticks(ax,**kwargs):
     '''
@@ -411,12 +453,17 @@ def add_ticks(ax,**kwargs):
             x_ticks = kwargs.get('xt_type')
         else:
             x_ticks = 'doble'
+        if 'xt_major_step' in kwargs:
+            xt_major_step = kwargs.get('xt_major_step')
+        else:
+            xt_major_step = 2
     
-        major_ticks  = np.arange(x[0],x[-1],abs(x[2]-x[0]))
-        ax.set_xticks(major_ticks)
-        if x_ticks == 'doble':
-            minor_ticks = np.arange(x[0],x[-1], abs(x[1]-x[0])/2)
-            ax.set_xticks(minor_ticks, minor=True)
+        if not x_ticks == 'none':
+            major_ticks  = np.arange(x[0],x[-1],abs(x[xt_major_step]-x[0]))
+            ax.set_xticks(major_ticks)
+            if x_ticks == 'doble':
+                minor_ticks = np.arange(x[0],x[-1], abs(x[1]-x[0])/2)
+                ax.set_xticks(minor_ticks, minor=True)
     return(ax)
 
 def add_vlines(x,ax,**kwargs):
@@ -451,21 +498,33 @@ def add_vlines(x,ax,**kwargs):
         ax.axvline(loc_x, color = vlines_color,linestyle=vlines_linestyle,linewidth=vlines_linewidth)
     ax.axvline(x[-1],label = vlines_label, color = vlines_color,linestyle=vlines_linestyle,linewidth=vlines_linewidth)
     return(ax)
+
 ###############################################################################################
 #Funciones in progress
 ###############################################################################################
 def comparativeN_plot(N,y, opt, **kwargs):
     '''
-    IN PROGRESS
-    Funcion de ploteo comparativo
-    plot_opts: Usar dict genérico de info \n
-    kwargs: tipo = Wf
+    Funcion de ploteo comparativo-incremental
+    inputs:
+        N_array, narray - Variable independiente 
+        pop, narray - Variable dependiente
+        opt, dict - Combo generico de info plots
+    kwargs:
+        tipo = Wf
+        label pack
+    returns:
+        Done notific
     '''
+    if 'wind_sim' in kwargs:
+        wind_sim = kwargs.get('wind_sim')
+    else:
+        wind_sim = '¿?'
+        
     if kwargs.get('tipo') == 'Wf':
         rel_incr = y[1:]/y[:-1] - 1
         rel_N = np.diff(N)
         fig, ax = plt.subplots()
-        ax.plot(rel_N, rel_incr, marker = 'x', label = 'Wind: ?')# + str(res_data['wind_sim']))
+        ax.plot(rel_N, rel_incr, marker = 'x', label = 'Wind: ' + wind_sim)
         ax.grid()
         ax.set_xlabel(r'$\Delta$ N')
         ax.set_ylabel(r'$\Delta W_f \%$')
@@ -486,11 +545,11 @@ def comparativeN_plot(N,y, opt, **kwargs):
             plt.close()
     
     elif kwargs.get('tipo') == 'CPUt':
-        ax.plot(N, y, marker = 'o', label = 'tiempo de cálculo')
+        ax.plot(N, y, marker = 'o', label = 'tiempo de cálculo - Wind: ' + wind_sim)
         ax.set_xlabel('N')
         ax.set_ylabel('t [s]')    
         ax2 = ax.twinx()
-        ax2.plot(N, y/3600)
+        ax2.plot(N, y/3600) #Escalar mejor
         ax2.set_ylabel('t [horas]')
         ax.grid()
         ax.legend()
