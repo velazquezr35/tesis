@@ -17,6 +17,7 @@ Importar
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.lines import Line2D
+import os
 
 """
 ------------------------------------------------------------------------------
@@ -410,25 +411,48 @@ def plot_propN(N_arr,prop,opt, **kwargs):
         wind_sim = kwargs.get('wind_sim')
     else:
         wind_sim = '¿?'
+    if 'mode' in kwargs:
+        mode = kwargs.get('mode')
+    else:
+        mode = 'norm'
     if 'grid' in opt:
         grid_status = opt['grid']
     else:
         grid_status = True
-    fig, ax = plt.subplots()
-    if type(prop)==list:
+    if not 'y_scale' in opt:
+        opt['y_scale'] = 'norm'
+    if not 'x_scale' in opt:
+        opt['x_scale'] = 'norm'
+    if not 'filecode' in opt:
+        opt['filecode'] = 'filecode_pls'
+    if not 'dpi' in opt:
+        opt['dpi'] = 150
+    if not 'aspect_ratio' in opt:
+        opt['aspect_ratio'] = 'auto'
+    if not 'fig_size' in opt:
+        opt['fig_size'] = (1,1)
+    fig, ax = plt.subplots(figsize=opt['fig_size'],dpi = opt['dpi'])
+    if mode == 'nested':
         for loc_prop in prop:
             ax.plot(N_arr,loc_prop, label = '')
-    else:
+    elif mode == 'norm':
         ax.plot(N_arr,prop,label='')
     ax = add_ticks(ax,x=N_arr,**kwargs)
     if grid_status:
         ax.grid(which='minor', alpha=0.2)
         ax.grid(which='major', alpha=0.5)
     ax.set_title('Viento: '+wind_sim)
-    ax.legend(title = 'Perfile óptimos')
-    fig.suptitle('Comparativa de consumos')
+    ax.legend(title = 'leyenda')
+    ax.set_aspect(opt['aspect_ratio'])
+    print(opt['aspect_ratio'])
+    if not opt['y_scale'] == 'norm':
+        ax.set_yscale(opt['y_scale'])
+    if not opt['x_scale'] == 'norm':
+        ax.set_xscale(opt['x_scale'])
+    fig.suptitle('Análisis de convergencia')
     if opt['save']:
         s_name = opt['ruta'] + "/" + opt['filecode'] + "_WfvsNplot"
+        check_e_file(s_name)
         plt.savefig(s_name, bbox_inches='tight')
     if opt['close']:
         plt.close()
@@ -437,7 +461,24 @@ def plot_propN(N_arr,prop,opt, **kwargs):
 ###############################################################################################
 #General tools funcs
 ###############################################################################################
-    
+def check_e_file(s_name,**kwargs):
+    '''
+    Funcion para borrar archivo previo, dado que savefig puede dar problemas
+    inputs:
+        s_name: ruta+nombre de archivo a chequear
+    kwargs:
+    returns:
+        none '''
+    if 'fig_format' in kwargs:
+        fig_format = kwargs.get('fig_format')
+    else:
+        fig_format = 'png'
+    try:
+        os.remove(s_name+'.'+fig_format)
+        print('File removed')
+    except:
+        pass
+    return()
 def add_ticks(ax,**kwargs):
     '''
     Funcion para agregar grid custom a un obj ax

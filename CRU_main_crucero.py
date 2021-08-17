@@ -24,6 +24,7 @@ import META_krg_factory as krg
 import CRU_plot_module as mplots
 import CRU_wind_eval
 import CRU_nav_module as nav
+import CRU_breguet_cases as breguet_cases
 
 """
 ------------------------------------------------------------------------------
@@ -267,7 +268,7 @@ def cruise_sim(profile,N, otp, mod_aeronave, **kwargs):
         return(otp['output'], consumo_post_pen, h_prof, x_prof, Va_prof, ts_prof, Vw_prof, VwD_prof, N, 0)
     if otp['output'] =="full":
         print("In progress - Salida completa")
-        nav.plot_ruta(LATs, LONGs, save=True, ruta='res', filecode = str(N), close = True)
+        # nav.plot_ruta(LATs, LONGs, save=True, ruta='res', filecode = str(N), close = True)
         extras = {'CL_prof':CL, 'CD_prof':CD, 'endurance':endurance_tramo, 'acc_prof':acc, 'tray_gamma':tray_gamma, 'Mach':Mach, 'a':a, 'W_prof':W, 'x_trep':d_rec_trepada, 'd_h':d_h}
         return(otp['output'], consumo_post_pen, h_prof, x_prof, Va_prof, ts_prof, Vw_prof, VwD_prof, N, extras)
     
@@ -295,9 +296,10 @@ if __name__ == "__main__":
     ruta_info = {'LATs':ruta_LATs, 'LONs':ruta_LONs, 'rev':ruta_rev}
     
     #Seteo de la corrida
-    N_opts = [128, 256]
+    N_opts = [4,8,16,32,64,128]
+    Wf_opts = []
     # N = 16
-    modo = True #True para optimizar, False para evaluar
+    modo = False #True para optimizar, False para evaluar
     wind_status = False
     
     for N in N_opts:
@@ -322,10 +324,20 @@ if __name__ == "__main__":
             ev_opciones['ruta'] = ruta_info
             SIM_results = data_manag.gen_res_SIM(*cruise_sim(NM_results.x, NM_results.N, ev_opciones,avion_A320),ev_opciones['wind_sim'])
             data_manag.BN_import_export(1,{'ruta':"res",'filename':"RES_output_"+str(N)+"_W"+str(wind_status)},SIM_results)
-            plot_opciones = data_manag.gen_opt_plots('res','revN'+str(SIM_results['N'])+'Ws'+str(SIM_results['wind_sim']),1,1,0)
+            plot_opciones = data_manag.gen_opt_plots('res','revN'+str(SIM_results['N'])+'Ws'+str(SIM_results['wind_sim']),1,save=True,close=False)
             # mplots.plot_show_export(plot_opciones, SIM_results,extra_s = 1, extra_data = SIM_results['extras'])
-            mplots.ppal_4_plots(plot_opciones, SIM_results, extra_data = SIM_results['extras'])
-            mplots.travel_plot(plot_opciones,SIM_results)
+            # mplots.ppal_4_plots(plot_opciones, SIM_results, extra_data = SIM_results['extras'])
+            # mplots.travel_plot(plot_opciones,SIM_results)
             print(NM_results.success)
             print(SIM_results['W_f'])
+            Wf_opts.append(SIM_results['W_f'])
+    
+    #Comparar con casos h-CL, Va-CL
+    N_opts.append(256)
+    Wf_opts.append(23200)
+    Wf_hCL,Wf_VaCL = breguet_cases.case_comp(N_opts, avion_A320,dist=2020)[:2]
+    plot_opciones['dpi'] = 200
+    plot_opciones['aspect_ratio'] = 'auto'
+    plot_opciones['fig_size'] = 8,3
+    mplots.plot_propN(N_opts,[Wf_opts,Wf_hCL,Wf_VaCL],plot_opciones,mode='nested',xt_type='none')
     

@@ -9,10 +9,13 @@ import numpy as np
 import CRU_extra_funcs as funcs
 import CRU_plot_module as plotter
 
-def multi_hVa(profile, N, otp, mod_aeronave):
+def multi_hVa(profile, N, otp, mod_aeronave,dist):
     '''
     inputs:
         profile, dict: {V_i, CL_i, h_i} para vuelo V-CL constante
+        N, int
+        mod_aeronave, funcs.plane obj
+        dist, float - Distancia en [mi]
     '''
     #Set up del modelo de aeronave
     S = mod_aeronave.general_props['wing']['area']*funcs.OPEN_2_EN['area']
@@ -20,7 +23,7 @@ def multi_hVa(profile, N, otp, mod_aeronave):
     k = mod_aeronave.drag_props.polar['clean']['k']
     
     M = N-1
-    dist = 2000*funcs.OTH_2_EN['mi_ft']
+    dist = dist*funcs.OTH_2_EN['mi_ft']
     
     x = np.arange(0,dist,dist/N)
     x_step = dist/M
@@ -63,10 +66,13 @@ def multi_hVa(profile, N, otp, mod_aeronave):
     extras = {'N':N,'h':h,'W':W,'rho':rho,'Mach':Mach,'gas':gas_ratio, 'x_prof':x, 'V':np.full(N,V_i)}
     return(W[0]-W[-1], extras)
 
-def multi_hCL(profile, N, otp, mod_aeronave):
+def multi_hCL(profile, N, otp, mod_aeronave, dist):
     '''
     inputs:
         profile, dict: {h_i, CL_i} para vuelo h-CL constante
+        N, int
+        mod_aeronave, funcs.plane obj
+        dist, float - Distancia en [mi]
     '''
     #Set up del modelo de aeronave
     S = mod_aeronave.general_props['wing']['area']*funcs.OPEN_2_EN['area']
@@ -74,7 +80,7 @@ def multi_hCL(profile, N, otp, mod_aeronave):
     k = mod_aeronave.drag_props.polar['clean']['k']
     
     M = N-1
-    dist = 2000*funcs.OTH_2_EN['mi_ft']
+    dist = dist*funcs.OTH_2_EN['mi_ft']
     
     x = np.arange(0,dist,dist/N)
     x_step = dist/M
@@ -111,21 +117,41 @@ def multi_hCL(profile, N, otp, mod_aeronave):
     extras = {'N':N,'h':np.full(N,h_i),'W':W,'rho':rho,'Mach':Mach,'gas':gas_ratio, 'x_prof':x, 'V':V}
     return(W[0]-W[-1],extras)
 
-if __name__ == '__main__':
-    prof_test = {'h_i':30e3,'CL_i':0.68,'V_i':650}
-    N_arr = [2,4,8,16,32,64,128,256]
+
+def case_comp(N_arr,mod_aeronave,dist,**kwargs):
+    '''
+    Funcion para la comparacion facil vs los resultados optimizados del código
+    inputs:
+        N_arr, narray - Puntos segmento
+        mod_aeronave, funcs.plane obj - Modelo de interes
+        dist, float - Distancia a cubrir [mi]
+    kwargs:
+        
+    returns:
+        W_f, list 2d - Nested Wf
+    '''
+    if 'prof_test' in kwargs:
+        prof_test = kwargs.get('prof_test')
+    else:
+        prof_test = {'h_i':30e3,'CL_i':0.68,'V_i':650}
     Wf_hCL = []
     Wf_VaCL = []
     extras_VaCL = []
     extras_hCL = []
-    avion_A320 = funcs.plane('A320','V2500-A1')
     for N in N_arr:
-        loc_res = multi_hVa(prof_test,N,1,avion_A320)
+        loc_res = multi_hVa(prof_test,N,1,mod_aeronave,dist)
         extras_VaCL.append(loc_res[1])
         Wf_VaCL.append(loc_res[0])
-        loc_res = multi_hCL(prof_test,N,1,avion_A320)
+        loc_res = multi_hCL(prof_test,N,1,mod_aeronave, dist)
         extras_hCL.append(loc_res[1])
         Wf_hCL.append(loc_res[0])
+    return(Wf_hCL,Wf_VaCL,extras_VaCL,extras_hCL)
+
+if __name__ == '__main__':
+    
+    N_arr = [2,4,8,16,32,64,128,256]
+    avion_A320 = funcs.plane('A320','V2500-A1')
+    Wf_hCL,Wf_VaCL,extras_VaCL,extras_hCL = case_comp(N_arr, avion_A320,dist=2000)
     
     
     plt.rcParams.update({'font.size': 15, 'font.family':'monospace'})  

@@ -107,7 +107,7 @@ def gen_iexport_XMLs(ruta,fname):
     ''' 
     return({'ruta':ruta,'fname':fname})
 
-def gen_opt_plots(ruta,filecode,status,save,close):
+def gen_opt_plots(ruta,filecode,status,save=True,close=True):
     '''
     Funcion para la generacion de un dict con opciones necesarias para la configuracion de ploteo y savefigs de Matplotlib
     inputs:
