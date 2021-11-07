@@ -89,6 +89,55 @@ def plot_ruta(LONGs, LATs, **kwargs):
     '''
  
     data_ploteo = {'figtitle':'Ploteo de ruta', 'info_label':'Ruta gen'}  
+    
+    if 'mode' in kwargs:
+        mode = kwargs.get('mode')
+    else:
+        mode = 'clasic_r'
+    
+    if 'legend_ON' in kwargs:
+        legend_ON = kwargs.get('legend_ON')
+    else:
+        legend_ON = True
+    
+    if 'title_ON' in kwargs:
+        title_ON = kwargs.get('title_ON')
+    else:
+        title_ON = True
+    if 'fig_dpi' in kwargs:
+        fig_dpi = kwargs.get('fig_dpi')
+    else:
+        fig_dpi = 200
+    if 'savefig_dpi' in kwargs:
+        savefig_dpi = kwargs.get('savefig_dpi')
+    else:
+        savefig_dpi = 200
+    
+    if 'ax_extent' in kwargs:
+        ax_extent = kwargs.get('ax_extent')
+    else:
+        ax_extent = 'default'
+    if ax_extent == 'auto': #Beta
+        mn_lat = min(LATs)
+        max_lat = max(LATs)
+        mn_lon = min(LONGs)
+        max_lon = max(LONGs)
+        lat_factor = 20
+        lon_factor = 10
+        ax_extent = [np.sign(mn_lat)*(abs(mn_lat)+lat_factor),np.sign(max_lat)*(abs(max_lat)+lat_factor),np.sign(mn_lon)*(abs(mn_lon)+lon_factor),np.sign(max_lon)*(abs(max_lon)+lon_factor)]
+    
+    elif ax_extent == 'USA':
+        ax_extent = [-133,-67,10,60]
+    elif ax_extent == 'ARG':
+        ax_extent = [-32,-85,15,-55]
+    else:
+        ax_extent = [-179,179,-90,90]
+    
+    if 'markersize' in kwargs:
+        markersize = kwargs.get('markersize')
+    else:
+        markersize = 2.5
+    
     if "plotclase" in kwargs:
         plotclase = kwargs.get("plotclase")
         data_ploteo = plotclase
@@ -100,9 +149,13 @@ def plot_ruta(LONGs, LATs, **kwargs):
             data_ploteo['figtitle'] = kwargs.get("figtitle")
     
     crs = ccrs.PlateCarree()
-    fig, ax = plt.subplots(dpi=150)
+    if 'figsize' in kwargs:
+        fig, ax = plt.subplots(figsize=kwargs.get('figsize'),dpi=fig_dpi)
+    else:
+       fig, ax = plt.subplots(dpi=fig_dpi) 
     ax = plt.axes(projection=ccrs.PlateCarree())
-    ax.set_extent([-90, 0, -60, 10]) #Sudamerica
+    if not ax_extent == None:
+        ax.set_extent(ax_extent)
     
     ax.add_feature(cartopy.feature.LAND)
     ax.add_feature(cartopy.feature.OCEAN)
@@ -111,24 +164,29 @@ def plot_ruta(LONGs, LATs, **kwargs):
     ax.add_feature(cartopy.feature.LAKES, alpha=0.5)
     ax.add_feature(cfeature.NaturalEarthFeature(
         'cultural', 'admin_1_states_provinces_lines', '10m',
-        edgecolor='gray', facecolor='none'))
+        edgecolor='gray', facecolor='none', linewidth=0.25))
 
     if "extra_lL" in kwargs:
         extra_LATs = kwargs.get("extra_lL")[1]
         extra_LONGs = kwargs.get("extra_lL")[0]
-        
-        ax.plot(extra_LATs, extra_LONGs, 'go', label = 'extra')
-        
-    ax.plot(LATs,LONGs, marker = 'd',markerfacecolor='y', label=data_ploteo['info_label'], transform=crs)
-    ax.plot(LATs[0],LONGs[0],'ro', label = 'Start point')
-    ax.plot(LATs[-1],LONGs[-1],'bo', label = 'End point')
-    ax.legend()
-    ax.set_title(data_ploteo['figtitle'])
-    plt.show()
+        ax.plot(extra_LATs, extra_LONGs, 'ro', markersize = markersize, label = 'extra')
+    
+    if mode == 'clasic_r':
+        ax.plot(LATs,LONGs, marker = 'd',markerfacecolor='y', label=data_ploteo['info_label'])#, transform=crs)
+        ax.plot(LATs[0],LONGs[0],'ro', label = 'Start point')
+        ax.plot(LATs[-1],LONGs[-1],'bo', label = 'End point')
+    elif mode == 'discrete_l':
+        for loc_lat, loc_lon in zip(LATs, LONGs):
+            ax.plot(loc_lat, loc_lon,markersize=markersize, marker = 'o',color = 'r', label=data_ploteo['info_label'], transform=crs)
+    if legend_ON:
+        ax.legend(fontsize=5, loc = 'upper center', ncol = 3)
+    if title_ON:
+        ax.set_title(data_ploteo['figtitle'])
+    plt.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.01)
     if "save" in kwargs:
         if kwargs.get('save'):
             s_name = kwargs.get('ruta') + "/"+  "navplot_" +kwargs.get('filecode')
-            plt.savefig(s_name, bbox_inches='tight')
+            plt.savefig(s_name, dpi = savefig_dpi)
 
     if "close" in kwargs:
         if kwargs.get("close"):
@@ -140,11 +198,11 @@ if __name__ == "__main__":
     '''
     
     print("Validación de nuevas funciones de navegación")
-    print("Simulación de ruta USU - EZE - MACA - SANTIAGO")
-    lats = [-54.8078,0.02589]
-    longs = [-68.3021,-51.06]
+    lats =  [40.640752, 33.948668]
+    longs = [-73.777911, -118.410450]
     print("Latitudes y longitudes ruta")
     print(lats, longs)
     fw_azi, bw_azi, dists = h_Di(lats,longs)
     print(h_Di(lats,longs))
     print(h_Di(np.flip(lats), np.flip(longs)))
+    plot_ruta(lats,longs,ax_extent='f')

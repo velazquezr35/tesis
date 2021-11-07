@@ -136,9 +136,6 @@ Standalone
 ------------------------------------------------------------------------------
 """
 if __name__ == '__main__':
-    
-    X = {'vals':np.linspace(0,10,10),'tipo':0}
-    a = {'val':2, 'tipo':2}
-    b = {'val':3, 'tipo':1}
-    evaluar_modelo(0,X,'one_var',y=a,z=b)
+    pass
+
     

@@ -88,6 +88,11 @@ def penalizacion(W_f, h_prof, CL, P_av, P_req, ts, Drg, Thr, d_h, x_step, x_clim
     log_dist = diff_dist < 0
     pen_aportes['c_dist'] = -sum(diff_dist*log_dist)*5
     
+    #Tentativo penalizar h > s.c. del avión
+    diff_hSC = h_prof - 39.5e3 #asumiendo 39500 ft
+    log_hSC = diff_hSC > 0
+    pen_aportes['c_hSC'] = sum(diff_hSC*log_hSC)
+    
     #Tentativo penalizar consumo maximo calculado no mayor a la masa inicial del avion
     # log_wf = W_f>400e3
     # pen_aportes['c_f'] = log_wf*2*W_f*0 

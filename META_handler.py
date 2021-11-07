@@ -19,6 +19,7 @@ import numpy as np
 import igra
 import os
 import pickle
+from skaero.atmosphere import coesa
 
 """
 ------------------------------------------------------------------------------
@@ -33,13 +34,19 @@ def determine_files(prefix, folder, **kwargs):
     kwargs pueden contener:
     returns: des_ind, dict - Indices deseados
     '''
-    for av_files in os.listdir(folder):
-        if av_files == 'igra2-station-list.txt':
-            print('Archivo de estaciones ya disponible')
-            sta_down = False
-            break
-        else:
-            sta_down = True
+    if not folder in os.listdir():
+        os.makedirs(folder)
+    
+    if not os.listdir(folder) == []:
+        for av_files in os.listdir(folder):
+            if av_files == 'igra2-station-list.txt':
+                print('Archivo de estaciones ya disponible')
+                sta_down = False
+                break
+            else:
+                sta_down = True
+    else:
+        sta_down = True
     if sta_down:
         #Se listan las estaciones disp. en el repo de IGRAA y se descarga
         av_sta = igra.download.stationlist(os.path.abspath(folder))
@@ -54,6 +61,34 @@ def determine_files(prefix, folder, **kwargs):
             if ind[:3] == pre[:3]:
                 des_ind[pre].append(ind)
     return(des_ind)
+
+def name_prep(filename, sufix, **kwargs):
+    '''
+    DOC
+    '''
+    name = filename[:-len(sufix)]
+    return(name)
+
+def read_pos(av_sta, des_sta, **kwargs):
+    '''
+    DOC
+    '''
+    if 'mode' in kwargs:
+        mode = kwargs.get('mode')
+    else:
+        mode = 'selective'
+    lats = []
+    lons = []
+    if mode == 'selective':
+        for loc_sta in des_sta:
+            loc_sta = name_prep(loc_sta, '-data.txt.zip')
+            lats.append(av_sta['lat'][loc_sta])
+            lons.append(av_sta['lon'][loc_sta])
+    elif mode == 'full':
+        for loc_sta in av_sta['wmo'].keys():
+            lats.append(av_sta['lat'][loc_sta])
+            lons.append(av_sta['lon'][loc_sta])
+    return(lats,lons)
 
 def prepare_stations(desired, opt_folder, **kwargs):
     '''
@@ -91,7 +126,7 @@ def read_station(fname, folder, data_req, size, **kwargs):
     '''Función que recibe nombre y ubicación de archivo ZIP, asumiendo que ya fue filtrado y está OK.
     inputs: 
         fname-folder - Informacion del archivo a leer
-        data_req - Tipo de datos a leer
+        data_req - Tipo de datos a leer (spd, dir or two)
         size, int - Tamaño a leer / Cantidad de datos
     kwargs puede contener:
     returns: loc_alt, loc_values, lat, lon (segun el indicador data_req)'''
@@ -107,42 +142,45 @@ def read_station(fname, folder, data_req, size, **kwargs):
     
     if size == 0:
         size = len(bulk_data)
-    
+    print('Size: ', size)
     data_count = 0
-    while len(loc_alt) < size:
-        if data_count >= len(bulk_data):
-            break
-        if not np.isnan([bulk_data.pres[data_count],bulk_data.windd[data_count],bulk_data.winds[data_count]]).any():
-            if not bulk_data.pres[data_count] < 0:
-                loc_alt = np.append(loc_alt, bulk_data.pres[data_count])
-                if data_req == 'spd':
-                    if not bulk_data.winds[data_count] < 0:
+    if not data_req == 'latlon':
+        while len(loc_alt) < size:
+            if data_count >= len(bulk_data):
+                break
+            if not np.isnan([bulk_data.pres[data_count],bulk_data.windd[data_count],bulk_data.winds[data_count]]).any():
+                if not bulk_data.pres[data_count] < 0:
+                    loc_alt = np.append(loc_alt, bulk_data.pres[data_count])
+                    if data_req == 'spd':
+                        if not bulk_data.winds[data_count] < 0:
+                            loc_values = np.append(loc_values,bulk_data.winds[data_count])
+                    elif data_req == 'dir':
+                        loc_values = np.append(loc_values,bulk_data.windd[data_count])
+                    elif data_req == 'two':
                         loc_values = np.append(loc_values,bulk_data.winds[data_count])
-                elif data_req == 'dir':
-                    loc_values = np.append(loc_values,bulk_data.windd[data_count])
-                elif data_req == 'two':
-                    loc_values = np.append(loc_values,bulk_data.winds[data_count])
-                    loc_values2 = np.append(loc_values2,bulk_data.windd[data_count])
-                else:
-                    return('Error, definir data_req spd or dir')
-        data_count += 1
+                        loc_values2 = np.append(loc_values2,bulk_data.windd[data_count])
+                    else:
+                        return('Error, definir data_req spd or dir')
+            data_count += 1
 
     for i in range(len(lects)):
         if not np.isnan(lects.lat[i]) and not np.isnan(lects.lon[i]):
             lat = lects.lat[i]
             lon = lects.lon[i]
             break
-
-    if data_req == 'two':
-        loc_values2 = loc_values2[loc_alt.argsort()]
-    loc_values = loc_values[loc_alt.argsort()]
-    loc_alt = np.sort(loc_alt)
-    if len(loc_alt) == 0:
-        raise ValueError('Set vacío. Verificar archivo')
-    if data_req == 'two':
-        return(loc_alt, loc_values, loc_values2, lat, lon)
+    if data_req == 'latlon':
+        return(lat,lon)
     else:
-        return(loc_alt, loc_values, lat, lon)
+        if data_req == 'two':
+            loc_values2 = loc_values2[loc_alt.argsort()]
+        loc_values = loc_values[loc_alt.argsort()]
+        loc_alt = np.sort(loc_alt)
+        if len(loc_alt) == 0:
+            raise ValueError('Set vacío. Verificar archivo: ' + fname)
+        if data_req == 'two':
+            return(loc_alt, loc_values, loc_values2, lat, lon)
+        else:
+            return(loc_alt, loc_values, lat, lon)
 
 def gen_input(stations_info, data_req, glob_size, **kwargs):
     '''Función para generar el vector input X, v de dim n \n
@@ -169,6 +207,7 @@ def gen_input(stations_info, data_req, glob_size, **kwargs):
     control_data = {}
     for sta in stations_info['files']:
         loc_alt, loc_values, loc_lat, loc_lon = read_station(sta,stations_info['folder'],data_req,ind_size)
+        loc_alt = coesa.p_table(loc_alt)
         if len(loc_alt) == len(loc_values):
             n_dots = len(loc_alt)
             control_data[sta] = n_dots
@@ -242,6 +281,8 @@ def gen_plot_opts(xlabel,ylabel, save, **kwargs):
         d_plot_opts['grid'] = bool(kwargs.get('grid'))
     if 'close' in kwargs:
         d_plot_opts['close'] = bool(kwargs.get('close'))
+    if 'fig_title' in kwargs:
+        d_plot_opts['fig_title'] = kwargs.get('fig_title')
     return(d_plot_opts)
 
 
@@ -255,8 +296,7 @@ if __name__ == '__main__':
     sta_prefix = ['ARM', 'BRM']
     sta_folder = 'station_data'
     run_folder = 'station_data/run'
-    read = False
-    if read:
+    if True: #READ
         av_files = determine_files(sta_prefix,sta_folder)
         dwn_files = prepare_stations(av_files,run_folder)
         dwn_stations(dwn_files,run_folder)

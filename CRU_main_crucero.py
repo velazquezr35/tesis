@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Created on Fri Apr  9 16:26:04 2021
 
@@ -32,13 +31,13 @@ Opciones globales
 ------------------------------------------------------------------------------
 """
 plt.rcParams.update({'font.size': 15})
+global_i = 0
 
 """
 ------------------------------------------------------------------------------
 Funciones
 ------------------------------------------------------------------------------
 """
-
 def cruise_sim(profile,N, otp, mod_aeronave, **kwargs):
     '''
     Función principal de simulacion y costo que calcula el consumo y variables asociadas para un vuelo propuesto \n
@@ -54,14 +53,16 @@ def cruise_sim(profile,N, otp, mod_aeronave, **kwargs):
             adim_profile, dict {Va: float,h: float,ts: float} - para utilizar un perfil input adimensionalizado particular, default 700 fts, 32e3 ft, 1 adim (sistema EN_tesis)
             h_0, float - altitud inicial fija de crucero, default 32e3 ft
     '''
+    global global_i
+    global_i +=1
     
     if 'glob_print' in kwargs:
         glob_print = kwargs.get('glob_print')
     else:
         glob_print = False
     
-    if 'adim_profile' in kwargs:
-        adim_profile = kwargs.get('adim_profile')
+    if 'adim_prof' in kwargs:
+        adim_prof = kwargs.get('adim_prof')
     else:
         adim_prof = {'Va':700, 'h':32e3, 'ts':1, 'info':'Valores adimensionales del perfil input en sistema EN_tesis'}
     
@@ -80,7 +81,7 @@ def cruise_sim(profile,N, otp, mod_aeronave, **kwargs):
     ts_prof = profile[M:2*M]*adim_prof['ts']
     h_prof = np.zeros(N)
     h_prof[1:] = profile[2*M:]*adim_prof['h']
-    h_prof[0] = 32000
+    h_prof[0] = h_0
     
     #Set up del modelo de aeronave
     S = mod_aeronave.general_props['wing']['area']*funcs.OPEN_2_EN['area']
@@ -96,7 +97,9 @@ def cruise_sim(profile,N, otp, mod_aeronave, **kwargs):
         prog_LONs = np.flip(prog_LONs)
     prog_fw_azi, prog_bw_azi, prog_dists = nav.h_Di(prog_LATs, prog_LONs)
     tot_dist = sum(prog_dists)*funcs.OTH_2_EN['mi_ft']
-    
+    if glob_print:
+        print('Dist: ')
+        print(tot_dist)
     #Set up de perfiles de variables de interes
     #Viento
     Vw_prof = np.zeros(M)
@@ -125,12 +128,12 @@ def cruise_sim(profile,N, otp, mod_aeronave, **kwargs):
     acc = np.zeros(M)
     tray_gamma = np.zeros(M)
     gas_ratio = np.zeros(M)
-    #Set up del peso inicial
-    W[0] = W0
     
+    #Peso inicial
+    W[0] = W0*otp['W0_factor']
+
     #Recorrida y calculo de los M segmentos
     for j in range(0,M):
-        #NOTA: Llevar la siguiente a la longitud media del segmento
         LATs[j], LONGs[j], headng[j] = nav.nav_route(x_prof[j]/funcs.OTH_2_EN['mi_ft'],prog_dists,prog_fw_azi,prog_LATs, prog_LONs)
         
         #Caso sin cambio de altitud, analisis directo bajo perfil h-Va constante
@@ -145,7 +148,7 @@ def cruise_sim(profile,N, otp, mod_aeronave, **kwargs):
             Drg[j] = 0.5*rho[j]*np.power(Va_prof[j],2)*S*CD[j]
             gas_ratio[j] = Drg[j]/Thr_disp[j]
             ct[j] = mod_aeronave._fflow_model_(Thr_disp[j]*gas_ratio[j]/funcs.OPEN_2_EN['force'], h_prof[j], ct_factor = funcs.OPEN_2_EN['mass'])
-            ct[j] = ct[j]/Drg[j] #OJO: CT LB / S PERO EQS CONSIDERAN LB / LBF S. Además aplico D = T
+            ct[j] = ct[j]/Drg[j] #OJO: CT LB / S PERO EQS CONSIDERAN LB / LBF S; ademas se aplica D = T
             P_req[j] = Drg[j]*Va_prof[j]
             q_1[j] = 0.5*rho[j]*Va_prof[j]**2
             r_1[j] = k/(np.power(q_1[j]*S,2)*CD0[j])
@@ -188,13 +191,13 @@ def cruise_sim(profile,N, otp, mod_aeronave, **kwargs):
             W_prom = W[j]
             d_W_prom = 1
             counter = 0
+            dV_dh = (Va_prof[j]-Va_prof[j-1])/(d_h[j])
             while abs(d_W_prom) > 0.01:
                 pre_W_prom = W_prom
                 CL_prom = 2*W_prom/(rho_prom*S*np.power(Va_prom,2))
                 CD0_prom = mod_aeronave._CD0_WDrg(Mach_prom)
                 CD_prom = CD0_prom + k*np.power(CL_prom,2)
                 Drg_prom = 0.5*rho_prom*np.power(Va_prom,2)*S*CD_prom
-                dV_dh = (Va_prof[j]-Va_prof[j-1])/(d_h[j])
                 if d_h[j]>0:
                     Thr_prom = ts_prof[j]*Thr_disp_prom
                 else:
@@ -267,9 +270,9 @@ def cruise_sim(profile,N, otp, mod_aeronave, **kwargs):
     elif otp['output'] == "normal":
         return(otp['output'], consumo_post_pen, h_prof, x_prof, Va_prof, ts_prof, Vw_prof, VwD_prof, N, 0)
     if otp['output'] =="full":
-        print("In progress - Salida completa")
-        # nav.plot_ruta(LATs, LONGs, save=True, ruta='res', filecode = str(N), close = True)
-        extras = {'CL_prof':CL, 'CD_prof':CD, 'endurance':endurance_tramo, 'acc_prof':acc, 'tray_gamma':tray_gamma, 'Mach':Mach, 'a':a, 'W_prof':W, 'x_trep':d_rec_trepada, 'd_h':d_h}
+        print("In progress - Full output")
+        # nav.plot_ruta(LATs, LONGs, save=True, ruta='res', filecode = str(N), close = True, ax_extent = 'ARG', legend_ON = False, title_ON = False, savefig_dpi = 800)
+        extras = {'distancia':tot_dist/funcs.OTH_2_EN['mi_ft'], 'W0': W0, 'CL_prof':CL, 'CD_prof':CD, 'endurance':endurance_tramo, 'acc_prof':acc, 'tray_gamma':tray_gamma, 'Mach':Mach, 'a':a, 'W_prof':W, 'x_trep':d_rec_trepada, 'd_h':d_h}
         return(otp['output'], consumo_post_pen, h_prof, x_prof, Va_prof, ts_prof, Vw_prof, VwD_prof, N, extras)
     
 """
@@ -278,66 +281,76 @@ Standalone
 ------------------------------------------------------------------------------
 """
 if __name__ == "__main__":
-    #Ejemplo de user end func
-    #(Luego se puede llevar a un archivo aparte, mas limpio)
     
-    #Definición modelos de viento y aeronave
-    wind_modelSpeed = krg.exp_imp_modelo(0,'imp',{'folder':'wind_models', 'name':'full_BR_AR_WS'})
-    wind_modelWDirection = krg.exp_imp_modelo(0,'imp',{'folder':'wind_models', 'name':'full_BR_AR_WD'})
+    #Definición de aeronave
     avion_A320 = funcs.plane('A320','V2500-A1')
-    #Esto ver de acomodar en otro lado
+
+    #Navegación ruta
+    #USH MAO
+    ruta_LATs =  [-54.8396, -3.041111]
+    ruta_LONs = [-68.3123, -60.050556]
+    wind_modelSpeed = krg.exp_imp_modelo(0,'imp',{'folder':'station_data', 'name':'FULL_BR_AR_WS_c02'})
+    wind_modelWDirection = krg.exp_imp_modelo(0,'imp',{'folder':'station_data', 'name':'FULL_BR_AR_WD'})
     wind_mods = {'wmodel_WSpeed':wind_modelSpeed, 'wmodel_WDir':wind_modelWDirection}
     
-    #Ruta a recorrer
-    #USU > EZE
-    ruta_LATs = [-54, -24.78]
-    ruta_LONs = [-68, -65.411]
+    #JKF LAX
+    # ruta_LATs =  [40.640752, 33.948668]
+    # ruta_LONs = [-73.777911, -118.410450]
+    # wind_modelSpeed = krg.exp_imp_modelo(0,'imp',{'folder':'wind_models', 'name':'USA_SPD_3d_10e3'})
+    # wind_modelWDirection = krg.exp_imp_modelo(0,'imp',{'folder':'wind_models', 'name':'USA_DIR_3d'})
+    # wind_mods = {'wmodel_WSpeed':wind_modelSpeed, 'wmodel_WDir':wind_modelWDirection}
+    
+    #General params
     ruta_rev = False
     ruta_info = {'LATs':ruta_LATs, 'LONs':ruta_LONs, 'rev':ruta_rev}
-    
-    #Seteo de la corrida
-    N_opts = [4,8,16,32,64,128]
+    N_opts = [2] #N puntos. Pueden ser varios casos.
     Wf_opts = []
-    # N = 16
+    glob_i_opts = [] #Contador, tests mios
     modo = False #True para optimizar, False para evaluar
-    wind_status = False
+    wind_status = False #Incluir o no efectos de viento
+    NM_tol = 1e-3 #Nelder-Mead tol.
     
     for N in N_opts:
+        global_i = 0
         V_test = 1
         ts_test = 0.95
-        h_test = np.linspace(1.05,1.2, N-1)
+        h_test = np.linspace(1.1,1.2, N-1)
         perfil_entrada = data_manag.gen_input_profile(N, V_test, ts_test, h_test)
-        
+        W0_factor = 0.90 #Factor de peso respecto al MTOW
         if modo:
             NM_opciones = data_manag.gen_sim_opciones('optimizar',wind=wind_status)
             #Ver de agregar esto directo en generar opciones
             NM_opciones['wind'] = wind_mods
+            NM_opciones['W0_factor'] = W0_factor
             NM_opciones['ruta'] = ruta_info
-            NM_results = sp.minimize(cruise_sim, perfil_entrada['prof_eval'], args = (perfil_entrada['N'], NM_opciones, avion_A320), method = 'Nelder-Mead', options={'maxiter': 1e7}, tol=1e-3)
+            NM_results = sp.minimize(cruise_sim, perfil_entrada['prof_eval'], args = (perfil_entrada['N'], NM_opciones, avion_A320), method = 'Nelder-Mead', options={'maxiter': 5e4}, tol=NM_tol)
             NM_results['N'] = N
             NM_results['wind_sim'] = NM_opciones['wind_sim']
+            glob_i_opts.append(global_i)
+            NM_results.glob_i = global_i
             data_manag.BN_import_export(1,{'ruta':"res",'filename':"NM_output_"+str(N)+"_W"+str(wind_status)},NM_results)
+            Wf_opts.append(NM_results.fun)
         else:
             NM_results = data_manag.BN_import_export(0,{'ruta':"res",'filename':"NM_output_"+str(N)+"_W"+str(wind_status)},0)
             ev_opciones = data_manag.gen_sim_opciones('evaluar',NM_results['wind_sim'],pen='full',output = 'full')
             ev_opciones['wind'] = wind_mods
-            ev_opciones['ruta'] = ruta_info
+            ev_opciones['W0_factor'] = W0_factor
+            ev_opciones['ruta'] = ruta_info            
             SIM_results = data_manag.gen_res_SIM(*cruise_sim(NM_results.x, NM_results.N, ev_opciones,avion_A320),ev_opciones['wind_sim'])
             data_manag.BN_import_export(1,{'ruta':"res",'filename':"RES_output_"+str(N)+"_W"+str(wind_status)},SIM_results)
+            #Generar plots
             plot_opciones = data_manag.gen_opt_plots('res','revN'+str(SIM_results['N'])+'Ws'+str(SIM_results['wind_sim']),1,save=True,close=False)
             # mplots.plot_show_export(plot_opciones, SIM_results,extra_s = 1, extra_data = SIM_results['extras'])
-            # mplots.ppal_4_plots(plot_opciones, SIM_results, extra_data = SIM_results['extras'])
+            # mplots.ppal_4_plots(plot_opciones, SIM_results, extra_data = SIM_results['extras'],savefig_dpi=500)
+            # mplots.ppal_gamma_plots(plot_opciones, SIM_results, extra_data = SIM_results['extras'],savefig_dpi=500)
+            # mplots.ppal_wind_plots(plot_opciones, SIM_results, extra_data = SIM_results['extras'],savefig_dpi=700)
             # mplots.travel_plot(plot_opciones,SIM_results)
-            print(NM_results.success)
-            print(SIM_results['W_f'])
+            
+            #Comparar con Breguet
+            prof_test = {'h_i':32e3,'CL_i':0.565,'V_i':698, 'W0_factor': 0.90}
+            Wf_hCL,Wf_VaCL,extras_VaCL,extras_hCL = breguet_cases.case_comp([N], avion_A320,dist=3600, prof_test = prof_test)
+            mplots.ppal_comp_VCL(plot_opciones, SIM_results, BREG_prof = extras_VaCL[0], extra_data = SIM_results['extras'],savefig_dpi=500)
+
+            #Cierre
             Wf_opts.append(SIM_results['W_f'])
-    
-    #Comparar con casos h-CL, Va-CL
-    N_opts.append(256)
-    Wf_opts.append(23200)
-    Wf_hCL,Wf_VaCL = breguet_cases.case_comp(N_opts, avion_A320,dist=2020)[:2]
-    plot_opciones['dpi'] = 200
-    plot_opciones['aspect_ratio'] = 'auto'
-    plot_opciones['fig_size'] = 8,3
-    mplots.plot_propN(N_opts,[Wf_opts,Wf_hCL,Wf_VaCL],plot_opciones,mode='nested',xt_type='none')
-    
+            # glob_i_opts.append(SIM_results['glob_i']) #Dejo desactivado porque archivos viejos no tienen esta info    

@@ -9,10 +9,11 @@ import numpy as np
 import CRU_extra_funcs as funcs
 import CRU_plot_module as plotter
 
-def multi_hVa(profile, N, otp, mod_aeronave,dist):
+def multi_VaCL(profile, N, otp, mod_aeronave,dist):
     '''
     inputs:
-        profile, dict: {V_i, CL_i, h_i} para vuelo V-CL constante
+        profile, dict: {CL_i, h_i} para vuelo Va-CL constante. V_i se obtiene por 
+        equlibrio para el CL_i y h_i informados.
         N, int
         mod_aeronave, funcs.plane obj
         dist, float - Distancia en [mi]
@@ -25,8 +26,8 @@ def multi_hVa(profile, N, otp, mod_aeronave,dist):
     M = N-1
     dist = dist*funcs.OTH_2_EN['mi_ft']
     
-    x = np.arange(0,dist,dist/N)
     x_step = dist/M
+    x = np.arange(0,dist+x_step,x_step)
     W = np.zeros(N)
     h = np.zeros(N)
     rho = np.zeros(N)
@@ -40,10 +41,14 @@ def multi_hVa(profile, N, otp, mod_aeronave,dist):
     gas_ratio = np.zeros(M)
     ct = np.zeros(M)
     
+    W[0] = W0*profile['W0_factor']
     CL_i = profile['CL_i']
     V_i = profile['V_i']
-    W[0] = W0
-    h[0] = profile['h_i']
+    
+    rho_init = 2*W[0]/(S*CL_i*np.power(V_i,2))
+    h[0] = funcs.inv_isa_ATM(rho_init/funcs.SI_2_EN['den'], 'EN_tesis')
+    
+    prof_fijo_VaCL = {'h_i':h[0], 'V_i':V_i, 'W0':W[0], 'CL_i':CL_i}
     
     for j in range(M):
         if j == 0:
@@ -63,7 +68,7 @@ def multi_hVa(profile, N, otp, mod_aeronave,dist):
         rho[j+1] = 2*W[j+1]/(CL_i*np.power(V_i,2)*S)
         h[j+1] = funcs.inv_isa_ATM(rho[j+1]/funcs.SI_2_EN['den'],'EN_tesis')
         
-    extras = {'N':N,'h':h,'W':W,'rho':rho,'Mach':Mach,'gas':gas_ratio, 'x_prof':x, 'V':np.full(N,V_i)}
+    extras = {'N':N,'h':h,'W':W,'rho':rho,'Mach':Mach,'gas':gas_ratio, 'x_prof':x, 'V':np.full(N,V_i), 'prof_fijo_VaCL':prof_fijo_VaCL}
     return(W[0]-W[-1], extras)
 
 def multi_hCL(profile, N, otp, mod_aeronave, dist):
@@ -82,8 +87,8 @@ def multi_hCL(profile, N, otp, mod_aeronave, dist):
     M = N-1
     dist = dist*funcs.OTH_2_EN['mi_ft']
     
-    x = np.arange(0,dist,dist/N)
     x_step = dist/M
+    x = np.arange(0,dist+x_step,x_step)
     W = np.zeros(N)
     V = np.zeros(N)
     E_i = np.zeros(M)
@@ -98,7 +103,7 @@ def multi_hCL(profile, N, otp, mod_aeronave, dist):
     CL_i = profile['CL_i']
     h_i = profile['h_i']
     rho, Temp, a = funcs.isa_ATM(h_i/funcs.SI_2_EN['lon'],'EN_tesis')[:3]
-    W[0] = W0
+    W[0] = W0*profile['W0_factor']
     
     for j in range(M):
         V[j] = np.sqrt(2*W[j]/(rho*S*CL_i))
@@ -123,7 +128,7 @@ def case_comp(N_arr,mod_aeronave,dist,**kwargs):
     Funcion para la comparacion facil vs los resultados optimizados del código
     inputs:
         N_arr, narray - Puntos segmento
-        mod_aeronave, funcs.plane obj - Modelo de interes
+        mod_aeronave, funcs.plane obj - Modelo de interés
         dist, float - Distancia a cubrir [mi]
     kwargs:
         
@@ -133,13 +138,13 @@ def case_comp(N_arr,mod_aeronave,dist,**kwargs):
     if 'prof_test' in kwargs:
         prof_test = kwargs.get('prof_test')
     else:
-        prof_test = {'h_i':30e3,'CL_i':0.68,'V_i':650}
+        prof_test = {'h_i':32e3,'CL_i':0.6,'V_i':700, 'W0_factor': 0.90}
     Wf_hCL = []
     Wf_VaCL = []
     extras_VaCL = []
     extras_hCL = []
     for N in N_arr:
-        loc_res = multi_hVa(prof_test,N,1,mod_aeronave,dist)
+        loc_res = multi_VaCL(prof_test,N,1,mod_aeronave,dist)
         extras_VaCL.append(loc_res[1])
         Wf_VaCL.append(loc_res[0])
         loc_res = multi_hCL(prof_test,N,1,mod_aeronave, dist)
@@ -149,9 +154,9 @@ def case_comp(N_arr,mod_aeronave,dist,**kwargs):
 
 if __name__ == '__main__':
     
-    N_arr = [2,4,8,16,32,64,128,256]
+    N_arr = [256]
     avion_A320 = funcs.plane('A320','V2500-A1')
-    Wf_hCL,Wf_VaCL,extras_VaCL,extras_hCL = case_comp(N_arr, avion_A320,dist=2000)
+    Wf_hCL,Wf_VaCL,extras_VaCL,extras_hCL = case_comp(N_arr, avion_A320,dist=3600)
     
     
     plt.rcParams.update({'font.size': 15, 'font.family':'monospace'})  

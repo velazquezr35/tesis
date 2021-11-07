@@ -124,7 +124,7 @@ if __name__ == '__main__':
     Tests manuales sencillos
     '''
     print('Tests')
-    fold = 'station_data/run'
+    fold = 'station_data/check'
     filelist = os.listdir(fold)
     for file in filelist:
         station_test({'filename':file, 'folder':fold},gen_ok_conds(15e3))
