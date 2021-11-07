@@ -292,6 +292,7 @@ if __name__ == "__main__":
     wind_modelSpeed = krg.exp_imp_modelo(0,'imp',{'folder':'station_data', 'name':'FULL_BR_AR_WS_c02'})
     wind_modelWDirection = krg.exp_imp_modelo(0,'imp',{'folder':'station_data', 'name':'FULL_BR_AR_WD'})
     wind_mods = {'wmodel_WSpeed':wind_modelSpeed, 'wmodel_WDir':wind_modelWDirection}
+    ruta_prefix = 'USHMAO'
     
     #JKF LAX
     # ruta_LATs =  [40.640752, 33.948668]
@@ -299,14 +300,15 @@ if __name__ == "__main__":
     # wind_modelSpeed = krg.exp_imp_modelo(0,'imp',{'folder':'wind_models', 'name':'USA_SPD_3d_10e3'})
     # wind_modelWDirection = krg.exp_imp_modelo(0,'imp',{'folder':'wind_models', 'name':'USA_DIR_3d'})
     # wind_mods = {'wmodel_WSpeed':wind_modelSpeed, 'wmodel_WDir':wind_modelWDirection}
+    # ruta_prefix = 'JFKLAX'
     
     #General params
     ruta_rev = False
     ruta_info = {'LATs':ruta_LATs, 'LONs':ruta_LONs, 'rev':ruta_rev}
-    N_opts = [2] #N puntos. Pueden ser varios casos.
+    N_opts = [129] #N puntos. Pueden ser varios casos.
     Wf_opts = []
     glob_i_opts = [] #Contador, tests mios
-    modo = False #True para optimizar, False para evaluar
+    modo = True #True para optimizar, False para evaluar
     wind_status = False #Incluir o no efectos de viento
     NM_tol = 1e-3 #Nelder-Mead tol.
     
@@ -314,7 +316,7 @@ if __name__ == "__main__":
         global_i = 0
         V_test = 1
         ts_test = 0.95
-        h_test = np.linspace(1.1,1.2, N-1)
+        h_test = np.linspace(1.01,1.2, N-1)
         perfil_entrada = data_manag.gen_input_profile(N, V_test, ts_test, h_test)
         W0_factor = 0.90 #Factor de peso respecto al MTOW
         if modo:
@@ -328,16 +330,16 @@ if __name__ == "__main__":
             NM_results['wind_sim'] = NM_opciones['wind_sim']
             glob_i_opts.append(global_i)
             NM_results.glob_i = global_i
-            data_manag.BN_import_export(1,{'ruta':"res",'filename':"NM_output_"+str(N)+"_W"+str(wind_status)},NM_results)
+            data_manag.BN_import_export(1,{'ruta':"res",'filename':ruta_prefix+"_NM_output_"+str(N)+"_W"+str(wind_status)},NM_results)
             Wf_opts.append(NM_results.fun)
         else:
-            NM_results = data_manag.BN_import_export(0,{'ruta':"res",'filename':"NM_output_"+str(N)+"_W"+str(wind_status)},0)
+            NM_results = data_manag.BN_import_export(0,{'ruta':"res",'filename':ruta_prefix+"_NM_output_"+str(N)+"_W"+str(wind_status)},0)
             ev_opciones = data_manag.gen_sim_opciones('evaluar',NM_results['wind_sim'],pen='full',output = 'full')
             ev_opciones['wind'] = wind_mods
             ev_opciones['W0_factor'] = W0_factor
             ev_opciones['ruta'] = ruta_info            
             SIM_results = data_manag.gen_res_SIM(*cruise_sim(NM_results.x, NM_results.N, ev_opciones,avion_A320),ev_opciones['wind_sim'])
-            data_manag.BN_import_export(1,{'ruta':"res",'filename':"RES_output_"+str(N)+"_W"+str(wind_status)},SIM_results)
+            data_manag.BN_import_export(1,{'ruta':"res",'filename':ruta_prefix+"_RES_output_"+str(N)+"_W"+str(wind_status)},SIM_results)
             #Generar plots
             plot_opciones = data_manag.gen_opt_plots('res','revN'+str(SIM_results['N'])+'Ws'+str(SIM_results['wind_sim']),1,save=True,close=False)
             # mplots.plot_show_export(plot_opciones, SIM_results,extra_s = 1, extra_data = SIM_results['extras'])
