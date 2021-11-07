@@ -341,7 +341,7 @@ if __name__ == "__main__":
             SIM_results = data_manag.gen_res_SIM(*cruise_sim(NM_results.x, NM_results.N, ev_opciones,avion_A320),ev_opciones['wind_sim'])
             data_manag.BN_import_export(1,{'ruta':"res",'filename':ruta_prefix+"_RES_output_"+str(N)+"_W"+str(wind_status)},SIM_results)
             #Generar plots
-            plot_opciones = data_manag.gen_opt_plots('res','revN'+str(SIM_results['N'])+'Ws'+str(SIM_results['wind_sim']),1,save=True,close=False)
+            plot_opciones = data_manag.gen_opt_plots('res',ruta_prefix+'_revN'+str(SIM_results['N'])+'Ws'+str(SIM_results['wind_sim']),1,save=True,close=False)
             # mplots.plot_show_export(plot_opciones, SIM_results,extra_s = 1, extra_data = SIM_results['extras'])
             # mplots.ppal_4_plots(plot_opciones, SIM_results, extra_data = SIM_results['extras'],savefig_dpi=500)
             # mplots.ppal_gamma_plots(plot_opciones, SIM_results, extra_data = SIM_results['extras'],savefig_dpi=500)
